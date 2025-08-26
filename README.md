@@ -151,3 +151,14 @@ helm […] --devel trustify/<chart> […]
 ## Initial set of importers
 
 You can create an initial set of importers by adding the values file `values-importers.yaml`.
+
+## External resources embedded
+
+We use a local copy of the following resources to be able to use in disconnected environments
+
+```bash
+wget -P ./charts/trustify/templates/schemas/kubernetes-json-schema/master/v1.29.0 https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json
+wget -P ./charts/trustify/templates/schemas/trustify/main/modules/importer/schema/ https://raw.githubusercontent.com/guacsec/trustify/main/modules/importer/schema/importer.json
+wget -P ./charts/trustify/templates/schemas/trustify/main/common/auth/schema/ https://raw.githubusercontent.com/guacsec/trustify/main/common/auth/schema/auth.json
+```
+These files must be copied under charts/trustify/templates/schemas in the respective folder
