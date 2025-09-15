@@ -66,7 +66,8 @@ spec:
   {{- if (empty $ingressHosts) }}
     {{- $ingressHosts = list .host }}
   {{- end }}
-  {{- if or (not (empty $tlsConfig)) (not (empty $ingressHosts)) }}
+  {{- $tlsEnabled := include "trustification.tls.serviceEnabled" .root -}}
+  {{- if and (eq $tlsEnabled "true") (or (not (empty $tlsConfig)) (not (empty $ingressHosts))) }}
   tls:
     {{- if (not (empty $tlsConfig)) }}
     {{- $tlsConfig | toYaml | nindent 4 }}
