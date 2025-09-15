@@ -73,11 +73,41 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether ingress resources should be created globally. Defaults to true for backward compatibility.\n"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Multiple hostnames for the ingress. If specified, overrides the single host configuration.\nThese hosts will be automatically used for TLS configuration if no explicit TLS config is provided.\n"
+        },
         "className": {
           "type": "string"
         },
         "additionalAnnotations": {
           "type": "object"
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hosts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "secretName": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "TLS configuration for the ingress. Each item can specify hosts and secretName for TLS termination.\nIf not specified and hosts are defined, TLS will be automatically configured using the hosts.\n"
         }
       }
     },
@@ -601,6 +631,13 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Hostnames for the ingress. If not specified, defaults to [{service-name}{appDomain}].\nThese hosts will be automatically used for TLS configuration if no explicit TLS config is provided.\n"
+        },
         "className": {
           "type": "string"
         },
@@ -610,6 +647,24 @@
             "type": "string"
           },
           "description": "Additional annotations which will be used as annotations on `Ingress` resources.\n"
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hosts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "secretName": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "TLS configuration for the ingress. Each item can specify hosts and secretName for TLS termination.\nIf not specified and hosts are defined, TLS will be automatically configured using the hosts.\n"
         }
       }
     },

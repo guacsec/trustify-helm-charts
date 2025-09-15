@@ -9,7 +9,8 @@ image:
 
 rust: {}
 
-ingress: {}
+ingress:
+  enabled: true
 
 tls: {}
 

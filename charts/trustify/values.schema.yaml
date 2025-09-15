@@ -77,10 +77,36 @@ properties:
     type: object
     additionalProperties: false
     properties:
+      enabled:
+        type: boolean
+        default: true
+        description: |
+          Controls whether ingress resources should be created globally. Defaults to true for backward compatibility.
+      hosts:
+        type: array
+        items:
+          type: string
+        description: |
+          Multiple hostnames for the ingress. If specified, overrides the single host configuration.
+          These hosts will be automatically used for TLS configuration if no explicit TLS config is provided.
       className:
         type: string
       additionalAnnotations:
         type: object
+      tls:
+        type: array
+        items:
+          type: object
+          properties:
+            hosts:
+              type: array
+              items:
+                type: string
+            secretName:
+              type: string
+        description: |
+          TLS configuration for the ingress. Each item can specify hosts and secretName for TLS termination.
+          If not specified and hosts are defined, TLS will be automatically configured using the hosts.
 
   infrastructure:
     type: object
@@ -455,6 +481,13 @@ definitions:
     type: object
     additionalProperties: false
     properties:
+      hosts:
+        type: array
+        items:
+          type: string
+        description: |
+          Hostnames for the ingress. If not specified, defaults to [{service-name}{appDomain}].
+          These hosts will be automatically used for TLS configuration if no explicit TLS config is provided.
       className:
         type: string
       additionalAnnotations:
@@ -463,6 +496,20 @@ definitions:
           type: string
         description: |
           Additional annotations which will be used as annotations on `Ingress` resources.
+      tls:
+        type: array
+        items:
+          type: object
+          properties:
+            hosts:
+              type: array
+              items:
+                type: string
+            secretName:
+              type: string
+        description: |
+          TLS configuration for the ingress. Each item can specify hosts and secretName for TLS termination.
+          If not specified and hosts are defined, TLS will be automatically configured using the hosts.
 
   Feature:
     type: object
