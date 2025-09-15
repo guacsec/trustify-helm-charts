@@ -77,6 +77,46 @@ The rest works like the `minikube` approach. The `APP_DOMAIN` is different thoug
 APP_DOMAIN=.$(kubectl get node kind-control-plane -o jsonpath='{.status.addresses[?(@.type == "InternalIP")].address}' | awk '// { print $1 }').nip.io
 ```
 
+#### Important Note for Kind + Podman Users (macOS/Windows)
+
+When using Kind with Podman (instead of Docker Desktop), the Kind cluster runs inside a VM managed by Podman. This creates a networking scenario where:
+
+- **Pod's localhost** = the pod itself (not the VM, not the host)
+- **VM localhost** = the VM (not the host)
+- **Host localhost** = your actual machine
+
+For proper networking, you need to use `APP_DOMAIN=.127.0.0.1.nip.io` and patch the CoreDNS configuration:
+
+1. **Get the ingress controller ClusterIP:**
+   ```bash
+   kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.spec.clusterIP}'
+   ```
+
+2. **Patch the CoreDNS configuration:**
+   ```bash
+   kubectl -n kube-system get configmap coredns -o yaml > coredns-config.yaml
+   ```
+   
+   Edit the `coredns-config.yaml` file and add the following to the `Corefile` section:
+   ```yaml
+   hosts {
+       10.96.75.197 sso.127.0.0.1.nip.io  # Replace 10.96.75.197 with your actual ClusterIP
+       fallthrough
+   }
+   ```
+   
+   Apply the updated configuration:
+   ```bash
+   kubectl -n kube-system apply -f coredns-config.yaml
+   ```
+
+3. **Restart CoreDNS:**
+   ```bash
+   kubectl -n kube-system rollout restart deployment coredns
+   ```
+
+This ensures that DNS resolution works correctly within the Kind cluster when using Podman.
+
 ### CRC
 
 Create a new cluster:
