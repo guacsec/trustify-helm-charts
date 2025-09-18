@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    
+
     # Only run when pull request is merged
     # or when a comment starting with `/backport` is created by someone other than the
     # https://github.com/apps/trustification-ci-bot bot user (user id: 199085543). Note that if you use your
@@ -32,4 +32,4 @@ jobs:
         startsWith(github.event.comment.body, '/backport')
       )
     secrets: inherit
-    uses: trustification/release-tools/.github/workflows/backport.yaml@main
+    uses: guacsec/trustify-release-tools/.github/workflows/backport.yaml@main

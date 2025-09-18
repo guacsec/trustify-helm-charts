@@ -46,7 +46,7 @@ helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-mi
 #### Enable tracing and metrics
 
 ```bash
-helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure --values values-minikube.yaml --set-string keycloak.ingress.hostname=sso$APP_DOMAIN --set-string appDomain=$APP_DOMAIN --set jaeger.enabled=true --set-string jaeger.allInOne.ingress.hosts[0]=jaeger$APP_DOMAIN --set tracing.enabled=true --set prometheus.enabled=true --set-string prometheus.server.ingress.hosts[0]=prometheus$APP_DOMAIN --set metrics.enabled=true
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure --values values-minikube.yaml --set-string keycloak.ingress.hostname=sso$APP_DOMAIN --set-string appDomain=$APP_DOMAIN --set jaeger.enabled=true --set-string jaeger.allInOne.ingress.host=jaeger$APP_DOMAIN --set tracing.enabled=true --set prometheus.enabled=true --set-string prometheus.server.ingress.host=prometheus$APP_DOMAIN --set metrics.enabled=true
 ```
 
 Using the default http://infrastructure-otelcol:4317 OpenTelemetry collector endpoint. This works with the previous
@@ -76,6 +76,46 @@ The rest works like the `minikube` approach. The `APP_DOMAIN` is different thoug
 ```bash
 APP_DOMAIN=.$(kubectl get node kind-control-plane -o jsonpath='{.status.addresses[?(@.type == "InternalIP")].address}' | awk '// { print $1 }').nip.io
 ```
+
+#### Important Note for Kind + Podman Users (macOS/Windows)
+
+When using Kind with Podman (instead of Docker Desktop), the Kind cluster runs inside a VM managed by Podman. This creates a networking scenario where:
+
+- **Pod's localhost** = the pod itself (not the VM, not the host)
+- **VM localhost** = the VM (not the host)
+- **Host localhost** = your actual machine
+
+For proper networking, you need to use `APP_DOMAIN=.127.0.0.1.nip.io` and patch the CoreDNS configuration:
+
+1. **Get the ingress controller ClusterIP:**
+   ```bash
+   kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.spec.clusterIP}'
+   ```
+
+2. **Patch the CoreDNS configuration:**
+   ```bash
+   kubectl -n kube-system get configmap coredns -o yaml > coredns-config.yaml
+   ```
+   
+   Edit the `coredns-config.yaml` file and add the following to the `Corefile` section:
+   ```yaml
+   hosts {
+       10.96.75.197 sso.127.0.0.1.nip.io  # Replace 10.96.75.197 with your actual ClusterIP
+       fallthrough
+   }
+   ```
+   
+   Apply the updated configuration:
+   ```bash
+   kubectl -n kube-system apply -f coredns-config.yaml
+   ```
+
+3. **Restart CoreDNS:**
+   ```bash
+   kubectl -n kube-system rollout restart deployment coredns
+   ```
+
+This ensures that DNS resolution works correctly within the Kind cluster when using Podman.
 
 ### CRC
 
@@ -146,6 +186,123 @@ And then, modify any of the previous `helm` commands to use:
 
 ```bash
 helm […] --devel trustify/<chart> […]
+```
+
+## Ingress Configuration
+
+The Trustify Helm chart supports flexible ingress configuration with multiple hostnames and automatic TLS setup.
+
+### Default Behavior
+
+By default, the chart creates an ingress with a single hostname using the pattern `{service-name}{appDomain}`:
+
+```yaml
+# Default configuration
+appDomain: .example.com
+# Results in hostname: server.example.com
+```
+
+### Multiple Hostnames
+
+You can configure multiple hostnames for the same service:
+
+```yaml
+ingress:
+  hosts:
+    - "api.trustify.com"
+    - "api-staging.trustify.com"
+    - "api-dev.trustify.com"
+```
+
+### Automatic TLS Configuration
+
+When you specify hostnames, TLS is automatically configured using the same hosts:
+
+```yaml
+ingress:
+  hosts:
+    - "api.trustify.com"
+    - "api-staging.trustify.com"
+# Automatically generates TLS with secret name: server-tls
+```
+
+### Custom TLS Configuration
+
+For advanced scenarios, you can provide explicit TLS configuration:
+
+```yaml
+ingress:
+  hosts:
+    - "api.trustify.com"
+    - "api-staging.trustify.com"
+  tls:
+    - hosts:
+        - "api.trustify.com"
+        - "api-staging.trustify.com"
+      secretName: "custom-tls"
+```
+
+### Multiple TLS Blocks
+
+You can configure different TLS secrets for different host groups:
+
+```yaml
+ingress:
+  hosts:
+    - "api.trustify.com"
+    - "api-staging.trustify.com"
+    - "api-dev.trustify.com"
+  tls:
+    - hosts:
+        - "api.trustify.com"
+        - "api-staging.trustify.com"
+      secretName: "prod-tls"
+    - hosts:
+        - "api-dev.trustify.com"
+      secretName: "dev-tls"
+```
+
+### Module-level Overrides
+
+You can override global ingress settings at the module level:
+
+```yaml
+ingress:
+  hosts:
+    - "default.example.com"
+modules:
+  server:
+    ingress:
+      hosts:
+        - "api.trustify.com"
+        - "api-staging.trustify.com"
+```
+
+### Ingress Class and Annotations
+
+Configure ingress class and additional annotations:
+
+```yaml
+ingress:
+  className: "nginx"
+  additionalAnnotations:
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+```
+
+### Disable Ingress
+
+You can disable ingress creation globally or per module:
+
+```yaml
+# Disable globally
+ingress:
+  enabled: false
+
+# Disable per module
+modules:
+  server:
+    enabled: false
 ```
 
 ## Initial set of importers
