@@ -1,0 +1,90 @@
+{{- if .Values.modules.collector.enabled }}
+{{- $mod := dict "root" . "name" "collector" "component" "collector" "module" .Values.modules.collector -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trustification.common.name" $mod }}
+  labels:
+    {{- include "trustification.common.labels" $mod | nindent 4 }}
+  annotations:
+    {{- include "trustification.application.annotations" $mod | nindent 4 }}
+
+spec:
+  replicas: {{ include "trustification.application.replicas" $mod }}
+  selector:
+    matchLabels:
+      {{- include "trustification.common.selectorLabels" $mod | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "trustification.common.selectorLabels" $mod | nindent 8 }}
+        {{- include "trustification.application.podLabels" $mod | nindent 8 }}
+      annotations:
+        {{- include "trustification.application.podAnnotations" $mod | nindent 8 }}
+
+    spec:
+      {{- include "trustification.application.pod" $mod | nindent 6 }}
+      {{- include "trustification.application.podAffinity" $mod | nindent 6 }}
+
+      containers:
+        - name: service
+          {{- include "trustification.common.defaultImage" $mod | nindent 10 }}
+          {{- include "trustification.application.container" $mod | nindent 10 }}
+
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 13133
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          command: [ "/otelcol-contrib" ]
+          args:
+            - --config=/etc/otelcol-contrib/otelcol-contrib.yaml
+
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+            {{- include "trustification.application.infrastructure.envVars" $mod | nindent 12 }}
+
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 8889
+              name: prometheus
+              protocol: TCP
+            - containerPort: 13133
+              name: health
+              protocol: TCP
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol-contrib
+              readOnly: true
+            {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "trustification.common.name" $mod }}-config
+        {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
+
+{{ end }}

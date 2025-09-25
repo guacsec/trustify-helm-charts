@@ -1,0 +1,34 @@
+$schema: "charts/trustify/values.schema.json"
+
+# Values file for infrastructure chart to enable Prometheus and configure it to scrape directly from services
+# This should be used with the infrastructure chart when the collector is NOT deployed
+
+appDomain: change-me
+
+prometheus:
+  enabled: true
+  server:
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      # Scrape directly from services (requires metrics.enabled=true on services)
+      - job_name: 'trustify-server'
+        static_configs:
+          - targets: ['trustify-server:9010']
+        scrape_interval: 15s
+        metrics_path: /metrics
+        scheme: http
+        honor_labels: true
+      - job_name: 'trustify-importer'
+        static_configs:
+          - targets: ['trustify-importer:9010']
+        scrape_interval: 15s
+        metrics_path: /metrics
+        scheme: http
+        honor_labels: true
+    ingress:
+      enabled: true
+      hosts:
+        - "prometheus{{ .Values.appDomain }}"
+      tls: []

@@ -36,7 +36,8 @@ metrics:
 tracing:
   enabled: false
 
-collector: {}
+collector:
+  endpoint: "http://trustify-collector:4317"
 
 modules:
   server:
@@ -87,3 +88,19 @@ modules:
       registry: docker.io/library
       version: "17.2"
     importers: {}
+
+  collector:
+    enabled: false
+    replicas: 1
+    image:
+      name: opentelemetry-collector-contrib
+      registry: docker.io/otel
+      version: "0.136.0"
+    infrastructure: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

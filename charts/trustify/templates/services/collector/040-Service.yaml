@@ -1,0 +1,32 @@
+{{- if .Values.modules.collector.enabled }}
+{{- $mod := dict "root" . "name" "collector" "component" "collector" "module" .Values.modules.collector -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "trustification.common.name" $mod }}
+  labels:
+    {{- include "trustification.common.labels" $mod | nindent 4 }}
+
+spec:
+  type: ClusterIP
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+      protocol: TCP
+    - name: prometheus
+      port: 8889
+      targetPort: prometheus
+      protocol: TCP
+    - name: health
+      port: 13133
+      targetPort: health
+      protocol: TCP
+  selector:
+    {{- include "trustification.common.selectorLabels" $mod | nindent 4 }}
+
+{{ end }}

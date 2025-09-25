@@ -270,6 +270,16 @@ properties:
                 additionalProperties:
                   $ref: "https://raw.githubusercontent.com/guacsec/trustify/main/modules/importer/schema/importer.json"
 
+      collector:
+        description: |
+          OpenTelemetry collector for collecting traces and metrics
+        allOf:
+          - $ref: "#/definitions/Feature"
+          - $ref: "#/definitions/Image"
+          - $ref: "#/definitions/Application"
+          - $ref: "#/definitions/Scalable"
+          - $ref: "#/definitions/Infrastructure"
+
   database:
     $ref: "#/definitions/PostgresConfig"
 

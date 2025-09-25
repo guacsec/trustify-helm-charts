@@ -1,0 +1,33 @@
+$schema: "charts/trustify/values.schema.json"
+
+# Values file for infrastructure chart to enable Prometheus and configure it to scrape from the collector
+# This should be used with the infrastructure chart when the collector IS deployed
+
+appDomain: change-me
+
+prometheus:
+  enabled: true
+  server:
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      # Scrape metrics from the deployed OpenTelemetry Collector
+      - job_name: 'trustify-collector'
+        static_configs:
+          - targets:
+              - '{{ include "trustification.common.name" (dict "root" . "name" "collector") }}:8889'
+        scrape_interval: 15s
+        metrics_path: /metrics
+        scheme: http
+        honor_labels: true
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            regex: 'trustify_.*'
+            target_label: service
+            replacement: 'trustify'
+    ingress:
+      enabled: true
+      hosts:
+        - "prometheus{{ .Values.appDomain }}"
+      tls: []

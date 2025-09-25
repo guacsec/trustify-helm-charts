@@ -1,0 +1,14 @@
+# Values file for deploying Trustify with OpenTelemetry collector and Prometheus
+# This configuration enables the collector and configures Prometheus to scrape metrics from it
+
+# Enable tracing and metrics
+tracing:
+  enabled: true
+
+metrics:
+  enabled: true
+
+# Enable the OpenTelemetry collector
+modules:
+  collector:
+    enabled: true
