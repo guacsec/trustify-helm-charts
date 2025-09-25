@@ -352,6 +352,26 @@
               }
             }
           ]
+        },
+        "collector": {
+          "description": "OpenTelemetry collector for collecting traces and metrics\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Feature"
+            },
+            {
+              "$ref": "#/definitions/Image"
+            },
+            {
+              "$ref": "#/definitions/Application"
+            },
+            {
+              "$ref": "#/definitions/Scalable"
+            },
+            {
+              "$ref": "#/definitions/Infrastructure"
+            }
+          ]
         }
       }
     },

@@ -4,6 +4,31 @@
 
 From a local copy of the repository, execute one of the following deployments.
 
+## Configuration Files
+
+The repository includes several configuration files for different deployment scenarios:
+
+### Infrastructure Configuration Files
+
+- **`values-infrastructure-collector.yaml`** - Use when deploying with OpenTelemetry collector
+  - Prometheus scrapes from `trustify-collector:8889`
+  - Centralized telemetry collection
+  - No direct service scraping
+
+- **`values-infrastructure-direct.yaml`** - Use when deploying without collector
+  - Prometheus scrapes directly from services (`trustify-server:9010`, `trustify-importer:9010`)
+  - Requires `metrics.enabled=true` on services
+  - Direct service scraping
+
+### Application Configuration Files
+
+- **`values-minikube.yaml`** - Minikube-specific configuration
+- **`values-crc.yaml`** - CRC-specific configuration  
+- **`values-ocp-aws.yaml`** - OpenShift on AWS configuration
+- **`values-ocp-no-aws.yaml`** - OpenShift without AWS configuration
+- **`values-collector-prometheus.yaml`** - Collector with Prometheus configuration
+- **`values-importers.yaml`** - Importer-specific configuration
+
 ### Minikube
 
 Create a new cluster:
@@ -43,24 +68,80 @@ Then deploy the application:
 helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-minikube.yaml --set-string appDomain=$APP_DOMAIN
 ```
 
-#### Enable tracing and metrics
+#### Enable Tracing and Metrics
+
+You have three main options for enabling observability in your Trustify deployment:
+
+##### Option 1: Infrastructure Collector
+
+Deploy the infrastructure with Jaeger and Prometheus, using the infrastructure OpenTelemetry collector:
 
 ```bash
-helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure --values values-minikube.yaml --set-string keycloak.ingress.hostname=sso$APP_DOMAIN --set-string appDomain=$APP_DOMAIN --set jaeger.enabled=true --set-string jaeger.allInOne.ingress.host=jaeger$APP_DOMAIN --set tracing.enabled=true --set prometheus.enabled=true --set-string prometheus.server.ingress.host=prometheus$APP_DOMAIN --set metrics.enabled=true
+# Deploy infrastructure with observability
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure \
+  --values values-minikube.yaml \
+  --set-string keycloak.ingress.hostname=sso$APP_DOMAIN \
+  --set-string appDomain=$APP_DOMAIN \
+  --set jaeger.enabled=true \
+  --set-string jaeger.allInOne.ingress.host=jaeger$APP_DOMAIN \
+  --set tracing.enabled=true \
+  --set prometheus.enabled=true \
+  --set-string prometheus.server.ingress.host=prometheus$APP_DOMAIN \
+  --set metrics.enabled=true
+
+# Deploy application with tracing and metrics
+helm upgrade --install -n $NAMESPACE trustify charts/trustify \
+  --values values-minikube.yaml \
+  --set-string appDomain=$APP_DOMAIN \
+  --set tracing.enabled=true \
+  --set metrics.enabled=true
 ```
 
-Using the default http://infrastructure-otelcol:4317 OpenTelemetry collector endpoint. This works with the previous
-command of the default infrastructure deployment:
+##### Option 2: Direct Service Scraping
+
+Deploy Prometheus that scrapes directly from services (requires metrics enabled on services):
 
 ```bash
-helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-minikube.yaml --set-string appDomain=$APP_DOMAIN --set tracing.enabled=true --set metrics.enabled=true
+# Deploy infrastructure with direct scraping
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure \
+  --values values-minikube.yaml \
+  --values values-infrastructure-direct.yaml \
+  --set-string keycloak.ingress.hostname=sso$APP_DOMAIN \
+  --set-string appDomain=$APP_DOMAIN
+
+# Deploy application with metrics enabled
+helm upgrade --install -n $NAMESPACE trustify charts/trustify \
+  --values values-minikube.yaml \
+  --set-string appDomain=$APP_DOMAIN \
+  --set tracing.enabled=true \
+  --set metrics.enabled=true
 ```
 
-Setting an explicit OpenTelemetry collector endpoint:
+**Note:** This approach requires services to expose Prometheus metrics endpoints. If metrics are disabled on services, you'll see scraping errors in Prometheus.
+
+##### Option 3: Application Collector with Prometheus (Recommended)
+
+Deploy both the application collector and Prometheus together for centralized telemetry collection:
 
 ```bash
-helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-minikube.yaml --set-string appDomain=$APP_DOMAIN --set tracing.enabled=true --set metrics.enabled=true --set-string collector.endpoint="http://infrastructure-otelcol:4317"
+# Deploy infrastructure with Prometheus configured for collector
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure \
+  --values values-minikube.yaml \
+  --values values-infrastructure-collector.yaml \
+  --set-string keycloak.ingress.hostname=sso$APP_DOMAIN \
+  --set-string appDomain=$APP_DOMAIN \
+  --set-string "prometheus.server.ingress.hosts[0]=prometheus$APP_DOMAIN"
+
+# Deploy application with built-in collector
+helm upgrade --install -n $NAMESPACE trustify charts/trustify \
+  --values values-minikube.yaml \
+  --set-string appDomain=$APP_DOMAIN \
+  --set tracing.enabled=true \
+  --set metrics.enabled=true \
+  --set modules.collector.enabled=true
 ```
+
+**Note:** This approach is recommended for deployments where the infrastructure is already provided and it is not possible to do direct scraping.
 
 ### Kind
 
@@ -158,6 +239,30 @@ Deploy the application:
 helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-no-aws.yaml --set-string appDomain=$APP_DOMAIN --values values-crc.yaml
 ```
 
+#### Enable OpenTelemetry Collector with CRC
+
+To use the built-in OpenTelemetry collector:
+
+```bash
+helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-no-aws.yaml --set-string appDomain=$APP_DOMAIN --values values-crc.yaml --set tracing.enabled=true --set metrics.enabled=true --set modules.collector.enabled=true
+```
+
+#### Enable OpenTelemetry Collector with Prometheus on CRC
+
+To deploy both the collector and Prometheus together:
+
+1. First, deploy the infrastructure with Prometheus configured to scrape from the collector:
+
+```bash
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure --values values-ocp-no-aws.yaml --values values-infrastructure-collector.yaml --set-string keycloak.ingress.hostname=sso$APP_DOMAIN --set-string appDomain=$APP_DOMAIN
+```
+
+2. Then deploy the application with the collector enabled:
+
+```bash
+helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-no-aws.yaml --set-string appDomain=$APP_DOMAIN --values values-crc.yaml --set tracing.enabled=true --set metrics.enabled=true --set modules.collector.enabled=true
+```
+
 ## OpenShift with AWS resources
 
 Instead of using Keycloak and the filesystem storage, it is also possible to use AWS Cognito and S3.
@@ -166,6 +271,30 @@ Deploy only the application:
 
 ```bash
 helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-aws.yaml --set-string appDomain=$APP_DOMAIN
+```
+
+#### Enable OpenTelemetry Collector with AWS
+
+To use the built-in OpenTelemetry collector:
+
+```bash
+helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-aws.yaml --set-string appDomain=$APP_DOMAIN --set tracing.enabled=true --set metrics.enabled=true --set modules.collector.enabled=true
+```
+
+#### Enable OpenTelemetry Collector with Prometheus on AWS
+
+To deploy both the collector and Prometheus together:
+
+1. First, deploy the infrastructure with Prometheus configured to scrape from the collector:
+
+```bash
+helm upgrade --install --dependency-update -n $NAMESPACE infrastructure charts/trustify-infrastructure --values values-ocp-aws.yaml --values values-infrastructure-collector.yaml --set-string appDomain=$APP_DOMAIN
+```
+
+2. Then deploy the application with the collector enabled:
+
+```bash
+helm upgrade --install -n $NAMESPACE trustify charts/trustify --values values-ocp-aws.yaml --set-string appDomain=$APP_DOMAIN --set tracing.enabled=true --set metrics.enabled=true --set modules.collector.enabled=true
 ```
 
 ## From a released chart
