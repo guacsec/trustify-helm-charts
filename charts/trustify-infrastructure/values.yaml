@@ -9,6 +9,11 @@ postgresql:
 
 keycloak:
   enabled: false
+  image:
+    repository: bitnamilegacy/keycloak
+  postgresql:
+    image:
+      repository: bitnamilegacy/postgresql
 
 jaeger:
   enabled: false
@@ -19,7 +24,7 @@ prometheus:
 keycloakPostInstall:
   disabled: false
   # NOTE: this must be an image which contain things like bash, kcadm, grep, awk
-  image: docker.io/bitnami/keycloak:26
+  image: docker.io/bitnamilegacy/keycloak:26
   kcadmPath: /opt/bitnami/keycloak/bin/kcadm.sh
   realmAdmin:
     name: admin
@@ -74,3 +79,7 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp]
           exporters: [otlphttp/prometheus]
+
+global:
+  security:
+    allowInsecureImages: true
