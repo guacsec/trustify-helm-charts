@@ -179,7 +179,7 @@ Instead of using a local checkout, you can also use a released chart.
 For this, you will need to add the following repository:
 
 ```bash
-helm repo add trustify https://trustification.io/trustify-helm-charts/
+helm repo add trustify https://guacsec.github.io/trustify-helm-charts/
 ```
 
 And then, modify any of the previous `helm` commands to use:
