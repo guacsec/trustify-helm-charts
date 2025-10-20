@@ -52,11 +52,11 @@ spec:
               value: /etc/init-data
 
             - name: REALM
-              value: {{ .Values.keycloakPostInstall.realm | default "chicken" }}
+              value: {{ .Values.keycloakPostInstall.realm | default "trustify" }}
 
-            - name: CHICKEN_ADMIN
+            - name: TRUSTIFY_ADMIN
               value: {{ .Values.keycloakPostInstall.realmAdmin.name | default "admin" }}
-            - name: CHICKEN_ADMIN_PASSWORD
+            - name: TRUSTIFY_ADMIN_PASSWORD
               value: {{ .Values.keycloakPostInstall.realmAdmin.password | quote }}
 
             - name: REDIRECT_URIS
@@ -147,13 +147,13 @@ spec:
               fi
 
               # create realm roles
-              kcadm create roles -r "${REALM}" -s name=chicken-user || true
-              kcadm create roles -r "${REALM}" -s name=chicken-manager || true
-              kcadm create roles -r "${REALM}" -s name=chicken-admin || true
-              # add chicken-user as default role
-              kcadm add-roles -r "${REALM}" --rname "default-roles-${REALM}" --rolename chicken-user
+              kcadm create roles -r "${REALM}" -s name=trustify-user || true
+              kcadm create roles -r "${REALM}" -s name=trustify-manager || true
+              kcadm create roles -r "${REALM}" -s name=trustify-admin || true
+              # add trustify-user as default role
+              kcadm add-roles -r "${REALM}" --rname "default-roles-${REALM}" --rolename trustify-user
 
-              MANAGER_ID=$(kcadm get roles -r "${REALM}" --fields id,name --format csv --noquotes | grep ",chicken-manager" | awk -F ',' '{print $1}')
+              MANAGER_ID=$(kcadm get roles -r "${REALM}" --fields id,name --format csv --noquotes | grep ",trustify-manager" | awk -F ',' '{print $1}')
 
               # create scopes
               # shellcheck disable=SC2043
@@ -164,8 +164,8 @@ spec:
               for i in create:document update:document delete:document; do
                 kcadm create client-scopes -r "${REALM}" -s "name=$i" -s protocol=openid-connect || true
                 ID=$(kcadm get client-scopes -r "${REALM}" --fields id,name --format csv --noquotes | grep ",${i}" | awk -F ',' '{print $1}')
-                # add all scopes to the chicken-manager
-                kcadm create "client-scopes/${ID}/scope-mappings/realm" -r "${REALM}" -b '[{"name":"chicken-manager", "id":"'"${MANAGER_ID}"'"}]' || true
+                # add all scopes to the trustify-manager
+                kcadm create "client-scopes/${ID}/scope-mappings/realm" -r "${REALM}" -b '[{"name":"trustify-manager", "id":"'"${MANAGER_ID}"'"}]' || true
               done
 
               {{ if hasKey .Values.oidc.clients "frontend" }}
@@ -202,35 +202,35 @@ spec:
                   # now set the client-secret
                   ID=$(kcadm get clients -r "${REALM}" --query exact=true --query "clientId=${client}" --fields id --format csv --noquotes)
                   if [ "${client}" == "cli" ]; then
-                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename chicken-manager
+                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename trustify-manager
                       kcadm update "clients/${ID}" -r "${REALM}" -s "secret=${CLI_SECRET}"
                   fi
                   if [ "${client}" == "testing-manager" ]; then
-                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename chicken-manager
+                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename trustify-manager
                       kcadm update "clients/${ID}" -r "${REALM}" -s "secret=${TESTING_MANAGER_SECRET}"
                   fi
                   if [ "${client}" == "testing-user" ]; then
-                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename chicken-user
+                      kcadm add-roles -r "${REALM}" --uusername service-account-${client} --rolename trustify-user
                       kcadm update "clients/${ID}" -r "${REALM}" -s "secret=${TESTING_USER_SECRET}"
                   fi
               done
 
               # create user
-              ID=$(kcadm get users -r "${REALM}" --query exact=true --query "username=${CHICKEN_ADMIN}" --fields id --format csv --noquotes)
+              ID=$(kcadm get users -r "${REALM}" --query exact=true --query "username=${TRUSTIFY_ADMIN}" --fields id --format csv --noquotes)
               # the next check might seem weird, but that's just Keycloak reporting a "user not found" in two different ways
               if [[ -n "$ID" || "$ID" == "[]" ]]; then
                 kcadm update "users/$ID" -r "${REALM}" -s enabled=true
               else
-                kcadm create users -r "${REALM}" -s "username=${CHICKEN_ADMIN}" -s enabled=true -s email=test@example.com -s emailVerified=true -s firstName=Admin -s lastName=Admin
+                kcadm create users -r "${REALM}" -s "username=${TRUSTIFY_ADMIN}" -s enabled=true -s email=test@example.com -s emailVerified=true -s firstName=Admin -s lastName=Admin
               fi
 
               # set role
-              kcadm add-roles -r "${REALM}" --uusername "${CHICKEN_ADMIN}" --rolename chicken-admin
-              kcadm add-roles -r "${REALM}" --uusername "${CHICKEN_ADMIN}" --rolename chicken-manager
+              kcadm add-roles -r "${REALM}" --uusername "${TRUSTIFY_ADMIN}" --rolename trustify-admin
+              kcadm add-roles -r "${REALM}" --uusername "${TRUSTIFY_ADMIN}" --rolename trustify-manager
 
               # set password
-              ID=$(kcadm get users -r "${REALM}" --query exact=true --query "username=${CHICKEN_ADMIN}" --fields id --format csv --noquotes)
-              kcadm update "users/${ID}/reset-password" -r "${REALM}" -s type=password -s "value=${CHICKEN_ADMIN_PASSWORD}" -s temporary=false -n
+              ID=$(kcadm get users -r "${REALM}" --query exact=true --query "username=${TRUSTIFY_ADMIN}" --fields id --format csv --noquotes)
+              kcadm update "users/${ID}/reset-password" -r "${REALM}" -s type=password -s "value=${TRUSTIFY_ADMIN_PASSWORD}" -s temporary=false -n
 
               if [[ -f "${INIT_DATA}/there-is-more.sh" ]]; then
                 echo Performing additional setup

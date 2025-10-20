@@ -73,7 +73,7 @@ Arguments (dict):
 {{- else if .root.Values.oidc.issuerUrl }}
 {{- .root.Values.oidc.issuerUrl }}
 {{- else -}}
-{{ include "trustification.tls.http.protocol" . }}://sso{{ .root.Values.appDomain }}/realms/chicken
+{{ include "trustification.tls.http.protocol" . }}://sso{{ .root.Values.appDomain }}/realms/trustify
 {{- end }}
 {{- end }}
 
