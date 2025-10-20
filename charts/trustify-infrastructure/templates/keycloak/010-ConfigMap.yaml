@@ -169,7 +169,7 @@ data:
     else
       kcadm create clients -r "${REALM}" -f "${INIT_DATA}/client-testing-manager.json" "${CLIENT_OPTS[@]}"
     fi
-    kcadm add-roles -r "${REALM}" --uusername service-account-{{ .Values.oidc.clients.testingManager.clientId | default "testing-manager" | quote }} --rolename chicken-manager
+    kcadm add-roles -r "${REALM}" --uusername service-account-{{ .Values.oidc.clients.testingManager.clientId | default "testing-manager" | quote }} --rolename trustify-manager
     # now set the client-secret
     ID=$(kcadm get clients -r "${REALM}" --query "clientId="{{ .Values.oidc.clients.testingManager.clientId | default "testing-manager" | quote }} --fields id --format csv --noquotes)
     kcadm update "clients/${ID}" -r "${REALM}" -s "secret=${TESTING_MANAGER_SECRET}"
@@ -189,7 +189,7 @@ data:
     else
       kcadm create clients -r "${REALM}" -f "${INIT_DATA}/client-testing-user.json" "${CLIENT_OPTS[@]}"
     fi
-    kcadm add-roles -r "${REALM}" --uusername service-account-{{ .Values.oidc.clients.testingUser.clientId | default "testing-user" | quote }} --rolename chicken-manager
+    kcadm add-roles -r "${REALM}" --uusername service-account-{{ .Values.oidc.clients.testingUser.clientId | default "testing-user" | quote }} --rolename trustify-manager
     # now set the client-secret
     ID=$(kcadm get clients -r "${REALM}" --query "clientId="{{ .Values.oidc.clients.testingUser.clientId | default "testing-user" | quote }} --fields id --format csv --noquotes)
     kcadm update "clients/${ID}" -r "${REALM}" -s "secret=${TESTING_USER_SECRET}"
