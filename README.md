@@ -214,18 +214,6 @@ ingress:
     - "api-dev.trustify.com"
 ```
 
-### Automatic TLS Configuration
-
-When you specify hostnames, TLS is automatically configured using the same hosts:
-
-```yaml
-ingress:
-  hosts:
-    - "api.trustify.com"
-    - "api-staging.trustify.com"
-# Automatically generates TLS with secret name: server-tls
-```
-
 ### Custom TLS Configuration
 
 For advanced scenarios, you can provide explicit TLS configuration:
