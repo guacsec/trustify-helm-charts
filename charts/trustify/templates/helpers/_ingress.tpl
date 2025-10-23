@@ -66,18 +66,9 @@ spec:
   {{- if (empty $ingressHosts) }}
     {{- $ingressHosts = list .host }}
   {{- end }}
-  {{- $tlsEnabled := include "trustification.tls.serviceEnabled" .root -}}
-  {{- if and (eq $tlsEnabled "true") (or (not (empty $tlsConfig)) (not (empty $ingressHosts))) }}
+  {{- if (not (empty $tlsConfig)) }}
   tls:
-    {{- if (not (empty $tlsConfig)) }}
     {{- $tlsConfig | toYaml | nindent 4 }}
-    {{- else if (not (empty $ingressHosts)) }}
-    - hosts:
-        {{- range $ingressHosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ include "trustification.common.name" . }}-tls
-    {{- end }}
   {{- end }}
   rules:
     {{- range $ingressHosts }}
