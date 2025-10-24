@@ -11,7 +11,7 @@ modules:
         sbom:
           description: All Red Hat SBOMs
           period: 1d
-          source: https://security.access.redhat.com/data/sbom/v1/spdx/
+          source: https://security.access.redhat.com/data/sbom/v1/
           keys:
             - https://security.access.redhat.com/data/97f5eac4.txt#77E79ABE93673533ED09EBE2DCE3823597F5EAC4
           disabled: true
