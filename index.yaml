@@ -2,6 +2,22 @@ apiVersion: v1
 entries:
   trustify:
   - apiVersion: v2
+    appVersion: 0.4.2
+    created: "2025-11-03T13:51:34.092409658Z"
+    description: A Helm chart for managing Trustify services on Kubernetes
+    digest: 401943a6dfc5564563bc6449a28f5cc70b12b6256a9f2981fadc8d766a9ae1d0
+    home: https://trustification.io
+    icon: https://raw.githubusercontent.com/trustification/trustification/main/docs/branding/svg/trustification_icon_default.svg
+    kubeVersion: ^1.29.0
+    maintainers:
+    - email: jreimann@redhat.com
+      name: ctron
+    name: trustify
+    type: application
+    urls:
+    - https://github.com/guacsec/trustify-helm-charts/releases/download/trustify-0.3.0/trustify-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
     appVersion: 0.3.5
     created: "2025-10-21T06:22:46.38827046Z"
     description: A Helm chart for managing Trustify services on Kubernetes
@@ -435,9 +451,9 @@ entries:
     version: 0.1.0-alpha.29
   - apiVersion: v2
     appVersion: 0.1.0-alpha.25
-    created: "2024-11-28T12:11:03.787168402Z"
+    created: "2024-11-27T09:28:13.325817906Z"
     description: A Helm chart for managing Trustify services on Kubernetes
-    digest: f105f953f773cae0b05a0aef9ec7254b1c1cf1c999e3d338d4636574ef2783bb
+    digest: 2fd70b7ae19e4c8813b397e65bce09c3cf4493ec1744126251637a56d6c10202
     home: https://trustification.io
     icon: https://raw.githubusercontent.com/trustification/trustification/main/docs/branding/svg/trustification_icon_default.svg
     kubeVersion: ^1.29.0
@@ -451,9 +467,9 @@ entries:
     version: 0.1.0-alpha.28
   - apiVersion: v2
     appVersion: 0.1.0-alpha.25
-    created: "2024-11-27T09:28:13.325817906Z"
+    created: "2024-11-28T12:11:03.787168402Z"
     description: A Helm chart for managing Trustify services on Kubernetes
-    digest: 2fd70b7ae19e4c8813b397e65bce09c3cf4493ec1744126251637a56d6c10202
+    digest: f105f953f773cae0b05a0aef9ec7254b1c1cf1c999e3d338d4636574ef2783bb
     home: https://trustification.io
     icon: https://raw.githubusercontent.com/trustification/trustification/main/docs/branding/svg/trustification_icon_default.svg
     kubeVersion: ^1.29.0
@@ -723,4 +739,4 @@ entries:
     urls:
     - https://github.com/trustification/trustify-helm-charts/releases/download/trustify-infrastructure-0.1.0/trustify-infrastructure-0.1.0.tgz
     version: 0.1.0
-generated: "2025-10-21T06:22:46.749003517Z"
+generated: "2025-11-03T13:51:34.092724977Z"
