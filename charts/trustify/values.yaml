@@ -4,7 +4,7 @@ replicas: 1
 
 image:
   name: trustd
-  registry: ghcr.io/trustification
+  registry: ghcr.io/guacsec
   pullPolicy: IfNotPresent
 
 rust: {}
