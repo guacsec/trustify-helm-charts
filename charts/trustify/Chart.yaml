@@ -9,7 +9,7 @@ maintainers:
     email: jreimann@redhat.com
 
 type: application
-version: 0.2.5
-appVersion: "0.3.5"
+version: 0.3.0
+appVersion: "0.4.2"
 icon: https://raw.githubusercontent.com/trustification/trustification/main/docs/branding/svg/trustification_icon_default.svg
 home: https://trustification.io
