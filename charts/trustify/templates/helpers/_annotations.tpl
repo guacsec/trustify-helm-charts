@@ -8,4 +8,7 @@ Arguments (dict):
 */}}
 {{ define "trustification.application.annotations" }}
 {{- include "trustification.application.collector.annotations" . }}
+{{- with .module.annotations }}
+{{ . | toYaml }}
+{{- end }}
 {{- end }}

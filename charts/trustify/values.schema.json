@@ -465,6 +465,13 @@
         },
         "affinity": {
           "type": "object"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations to add to the module deployment metadata.\n"
         }
       }
     },

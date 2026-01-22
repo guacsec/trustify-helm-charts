@@ -352,6 +352,12 @@ definitions:
         type: object
       affinity:
         type: object
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: |
+          Annotations to add to the module deployment metadata.
 
   RustApplication:
     type: object
