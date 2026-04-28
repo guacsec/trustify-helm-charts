@@ -96,7 +96,7 @@ For proper networking, you need to use `APP_DOMAIN=.127.0.0.1.nip.io` and patch 
    ```bash
    kubectl -n kube-system get configmap coredns -o yaml > coredns-config.yaml
    ```
-   
+
    Edit the `coredns-config.yaml` file and add the following to the `Corefile` section:
    ```yaml
    hosts {
@@ -104,7 +104,7 @@ For proper networking, you need to use `APP_DOMAIN=.127.0.0.1.nip.io` and patch 
        fallthrough
    }
    ```
-   
+
    Apply the updated configuration:
    ```bash
    kubectl -n kube-system apply -f coredns-config.yaml
@@ -296,3 +296,4 @@ modules:
 ## Initial set of importers
 
 You can create an initial set of importers by adding the values file `values-importers.yaml`.
+
