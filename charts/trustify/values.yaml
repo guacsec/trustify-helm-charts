@@ -42,7 +42,6 @@ collector: {}
 modules:
   server:
     enabled: true
-    replicas: 1
     ingress: {}
     image: {}
     infrastructure: {}
@@ -56,7 +55,6 @@ modules:
 
   importer:
     enabled: true
-    replicas: 1
     image: {}
     infrastructure: {}
     tracing: {}
