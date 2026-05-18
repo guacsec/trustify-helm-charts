@@ -238,6 +238,10 @@
                 "maximumCacheSize": {
                   "description": "The maximum number of the bytes the analysis cache will hold before evicting entries.\n",
                   "$ref": "#/definitions/ByteSize"
+                },
+                "paginationCacheTtl": {
+                  "type": "string",
+                  "description": "The TTL for the pagination total-count cache (humantime, e.g. \"60s\", \"5m\").\nIf not set, the application default of \"60s\" is used.\n"
                 }
               }
             }

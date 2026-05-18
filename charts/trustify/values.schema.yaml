@@ -208,6 +208,11 @@ properties:
                 description: |
                   The maximum number of the bytes the analysis cache will hold before evicting entries.
                 $ref: "#/definitions/ByteSize"
+              paginationCacheTtl:
+                type: string
+                description: |
+                  The TTL for the pagination total-count cache (humantime, e.g. "60s", "5m").
+                  If not set, the application default of "60s" is used.
 
       importer:
         description: |
