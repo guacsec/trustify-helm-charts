@@ -1,6 +1,9 @@
 {{- $res := dict "root" . "name" "storage" -}}
 
 {{- if eq .Values.storage.type "filesystem" }}
+{{- $pvcName := (include "trustification.common.name" $res) }}
+{{- $existingPVC := (lookup "v1" "PersistentVolumeClaim" .Release.Namespace $pvcName) }}
+{{- if not $existingPVC }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -24,4 +27,5 @@ spec:
   storageClassName: {{ . | quote }}
 {{- end }}
 
+{{- end }}
 {{- end }}
