@@ -9,6 +9,8 @@ image:
 
 rust: {}
 
+readOnly: false
+
 ingress:
   enabled: true
 
@@ -65,6 +67,7 @@ modules:
         cpu: 1
         memory: 8Gi
     concurrency: 1
+    # readOnly: false
     workingDirectory:
       size: 32Gi
 
