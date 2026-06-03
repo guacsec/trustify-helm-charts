@@ -24,7 +24,8 @@ openshift:
   useServiceCa: true
 
 oidc:
-  uiScopes: ""
+  uiScope: ""
+  loadUser: true
   clients:
     frontend: {}
     cli:
