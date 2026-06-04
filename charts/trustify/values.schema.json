@@ -762,9 +762,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "uiScopes": {
+        "uiScope": {
           "type": "string",
-          "description": "Optional value for the `UI_SCOPES` environment variable in the server deployment.\n"
+          "description": "Optional value for the `UI_SCOPE` environment variable in the server deployment.\n"
         },
         "issuerUrl": {
           "$ref": "#/definitions/ValueOrRef"
@@ -773,6 +773,11 @@
           "type": "boolean",
           "description": "Use insecure TLS when communicating with the issuer (DANGER!)\n",
           "default": false
+        },
+        "loadUser": {
+          "type": "boolean",
+          "description": "Value for the `UI_LOAD_USER` environment variable in the server deployment\n",
+          "default": true
         },
         "clients": {
           "properties": {
