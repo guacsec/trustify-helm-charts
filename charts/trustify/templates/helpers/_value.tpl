@@ -9,11 +9,17 @@ Arguments (dict):
 
 {{- if .valueFrom.secretKeyRef }}
 {{- $secret := lookup "v1" "Secret" .root.Release.Namespace .valueFrom.secretKeyRef.name }}
-{{- required "Key not present in Secret" (index $secret.data .valueFrom.secretKeyRef.key ) | b64dec }}
+{{- if not $secret.data }}
+{{- fail (printf "Secret '%s' not found in namespace '%s' (or 'lookup' is unavailable in this mode)" .valueFrom.secretKeyRef.name .root.Release.Namespace) }}
+{{- end }}
+{{- required (printf "Key '%s' not found in Secret '%s'" .valueFrom.secretKeyRef.key .valueFrom.secretKeyRef.name) (index $secret.data .valueFrom.secretKeyRef.key) | b64dec }}
 
 {{- else if .valueFrom.configMapKeyRef }}
 {{- $config := lookup "v1" "ConfigMap" .root.Release.Namespace .valueFrom.configMapKeyRef.name }}
-{{- required "Key not present in ConfigMap" (index $config.data .valueFrom.configMapKeyRef.key ) }}
+{{- if not $config.data }}
+{{- fail (printf "ConfigMap '%s' not found in namespace '%s' (or 'lookup' is unavailable in this mode)" .valueFrom.configMapKeyRef.name .root.Release.Namespace) }}
+{{- end }}
+{{- required (printf "Key '%s' not found in ConfigMap '%s'" .valueFrom.configMapKeyRef.key .valueFrom.configMapKeyRef.name) (index $config.data .valueFrom.configMapKeyRef.key) }}
 
 {{- else }}
 {{- fail "valueFrom can only use .secretKeyRef or .configMapRef" }}
