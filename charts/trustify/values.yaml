@@ -82,6 +82,9 @@ modules:
   migrateDatabase:
     enabled: false
     image: {}
+    # dataMigrationSkip:
+    #   - m0002000_add_sbom_properties
+    # dataMigrationSkipAll: false
 
   createImporters:
     enabled: false

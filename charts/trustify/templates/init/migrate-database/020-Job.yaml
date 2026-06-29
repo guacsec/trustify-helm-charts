@@ -46,6 +46,18 @@ spec:
             {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( required "Using migrateDatabase requires setting .Values.migrateDatabase" (deepCopy .Values.migrateDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
             {{- include "trustification.storage.envVars" $mod | nindent 12 }}
 
+            {{- if and .Values.modules.migrateDatabase.dataMigrationSkip .Values.modules.migrateDatabase.dataMigrationSkipAll }}
+            {{- fail "dataMigrationSkip and dataMigrationSkipAll are mutually exclusive" }}
+            {{- end }}
+            {{- with .Values.modules.migrateDatabase.dataMigrationSkip }}
+            - name: MIGRATION_DATA_SKIP
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- if .Values.modules.migrateDatabase.dataMigrationSkipAll }}
+            - name: MIGRATION_DATA_SKIP_ALL
+              value: "true"
+            {{- end }}
+
           volumeMounts:
             {{- include "trustification.storage.volumeMount" $mod | nindent 12 }}
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
