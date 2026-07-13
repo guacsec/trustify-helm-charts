@@ -54,6 +54,11 @@ spec:
             {{- include "trustification.storage.envVars" $mod | nindent 12 }}
             {{- include "trustification.oidc.swaggerUi" $mod | nindent 12 }}
 
+            {{- with (include "trustification.application.cache.ttl" . | trim) }}
+            - name: TRUSTD_PAGINATION_TOTAL_CACHE_TTL
+              value: {{ . | quote }}
+            {{- end }}
+
             - name: UI_ISSUER_URL
               value: {{ include "trustification.oidc.frontendIssuerUrl" . }}
             - name: UI_CLIENT_ID

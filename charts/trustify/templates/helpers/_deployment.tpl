@@ -78,3 +78,14 @@ resources:
 {{ end }}
 
 {{- end }}
+
+{{/*
+Cache time to live.
+
+Arguments (dict):
+  * root - .
+  * module - module object
+*/}}
+{{- define "trustification.application.cache.ttl" }}
+{{- .Values.modules.server.cacheTTL }}
+{{- end }}

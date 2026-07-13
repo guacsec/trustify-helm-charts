@@ -51,6 +51,7 @@ modules:
     tracing: {}
     metrics: {}
     rust: {}
+    cacheTTL: "60sec"
     resources:
       requests:
         cpu: 1

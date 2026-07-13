@@ -216,6 +216,10 @@ properties:
                 description: |
                   The maximum number of the bytes the analysis cache will hold before evicting entries.
                 $ref: "#/definitions/ByteSize"
+              cacheTTL:
+                type: string
+                description: |
+                  the time a cache is allowed to live (in s) before forcing a reload.
               readOnly:
                 type: boolean
                 description: |
