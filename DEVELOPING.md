@@ -47,6 +47,22 @@ Lint like CI:
 ct lint --config .github/ct.yaml --all
  ```
 
+## Unit testing Helm templates
+
+Install the [helm-unittest](https://github.com/helm-unittest/helm-unittest) plugin (one-time setup):
+
+```shell
+helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.1.1 --verify=false
+```
+
+Run the tests:
+
+```shell
+helm unittest charts/trustify
+```
+
+Test files live in `charts/trustify/tests/` with the suffix `_test.yaml`.
+
 ## Find that whitespace
 
 ```shell
