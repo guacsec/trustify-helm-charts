@@ -230,6 +230,7 @@ properties:
                 description: |
                   Enable read-only mode. When true, the server rejects all mutating API
                   requests with 503 and the importer suspends all import jobs.
+                  
       importer:
         description: |
           The main server process.
