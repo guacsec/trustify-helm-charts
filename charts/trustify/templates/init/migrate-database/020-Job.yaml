@@ -34,17 +34,20 @@ spec:
       {{- include "trustification.application.pod" $mod | nindent 6 }}
 
       volumes:
+        {{- include "trustification.storage.volume" $mod | nindent 8 }}
         {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
 
       containers:
         - name: job
           {{- include "trustification.common.defaultImage" $mod | nindent 10 }}
-          {{- include "trustification.application.container" $mod | nindent 6 }}
+          {{- include "trustification.application.container" $mod | nindent 10 }}
 
           env:
             {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( required "Using migrateDatabase requires setting .Values.migrateDatabase" (deepCopy .Values.migrateDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
+            {{- include "trustification.storage.envVars" $mod | nindent 12 }}
 
           volumeMounts:
+            {{- include "trustification.storage.volumeMount" $mod | nindent 12 }}
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
 
           command:

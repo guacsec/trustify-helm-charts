@@ -67,6 +67,14 @@ properties:
   oidc:
     $ref: "#/definitions/Oidc"
 
+  readOnly:
+    type: boolean
+    default: false
+    description: |
+      Global default for read-only mode. When true, the server rejects all mutating API
+      requests with 503 and the importer suspends all import jobs.
+      Can be overridden per module via modules.server.readOnly / modules.importer.readOnly.
+
   replicas:
     type: integer
     minimum: 0
@@ -213,7 +221,15 @@ properties:
                 description: |
                   The TTL for the pagination total-count cache (humantime, e.g. "60s", "5m").
                   If not set, the application default of "60s" is used.
-
+              cacheTTL:
+                type: string
+                description: |
+                  the time a cache is allowed to live (in s) before forcing a reload.
+              readOnly:
+                type: boolean
+                description: |
+                  Enable read-only mode. When true, the server rejects all mutating API
+                  requests with 503 and the importer suspends all import jobs.
       importer:
         description: |
           The main server process.
@@ -242,6 +258,11 @@ properties:
                   The max number of import jobs that may run concurrently
               storageClassName:
                 type: string
+              readOnly:
+                type: boolean
+                description: |
+                  Enable read-only mode. When true, the server rejects all mutating API
+                  requests with 503 and the importer suspends all import jobs.
 
       createDatabase:
         description: |
@@ -579,10 +600,10 @@ definitions:
     type: object
     additionalProperties: false
     properties:
-      uiScopes:
+      uiScope:
         type: string
         description: |
-          Optional value for the `UI_SCOPES` environment variable in the server deployment.
+          Optional value for the `UI_SCOPE` environment variable in the server deployment.
 
       issuerUrl:
         $ref: "#/definitions/ValueOrRef"
@@ -592,6 +613,12 @@ definitions:
         description: |
           Use insecure TLS when communicating with the issuer (DANGER!)
         default: false
+
+      loadUser:
+        type: boolean
+        description: |
+          Value for the `UI_LOAD_USER` environment variable in the server deployment
+        default: true
 
       clients:
         properties:

@@ -64,6 +64,11 @@
     "oidc": {
       "$ref": "#/definitions/Oidc"
     },
+    "readOnly": {
+      "type": "boolean",
+      "default": false,
+      "description": "Global default for read-only mode. When true, the server rejects all mutating API\nrequests with 503 and the importer suspends all import jobs.\nCan be overridden per module via modules.server.readOnly / modules.importer.readOnly.\n"
+    },
     "replicas": {
       "type": "integer",
       "minimum": 0,
@@ -242,6 +247,14 @@
                 "paginationCacheTtl": {
                   "type": "string",
                   "description": "The TTL for the pagination total-count cache (humantime, e.g. \"60s\", \"5m\").\nIf not set, the application default of \"60s\" is used.\n"
+                },  
+                "cacheTTL": {
+                  "type": "string",
+                  "description": "the time a cache is allowed to live (in s) before forcing a reload.\n"
+                },
+                "readOnly": {
+                  "type": "boolean",
+                  "description": "Enable read-only mode. When true, the server rejects all mutating API\nrequests with 503 and the importer suspends all import jobs.\n"
                 }
               }
             }
@@ -295,6 +308,10 @@
                 },
                 "storageClassName": {
                   "type": "string"
+                },
+                "readOnly": {
+                  "type": "boolean",
+                  "description": "Enable read-only mode. When true, the server rejects all mutating API\nrequests with 503 and the importer suspends all import jobs.\n"
                 }
               }
             }
@@ -753,9 +770,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "uiScopes": {
+        "uiScope": {
           "type": "string",
-          "description": "Optional value for the `UI_SCOPES` environment variable in the server deployment.\n"
+          "description": "Optional value for the `UI_SCOPE` environment variable in the server deployment.\n"
         },
         "issuerUrl": {
           "$ref": "#/definitions/ValueOrRef"
@@ -764,6 +781,11 @@
           "type": "boolean",
           "description": "Use insecure TLS when communicating with the issuer (DANGER!)\n",
           "default": false
+        },
+        "loadUser": {
+          "type": "boolean",
+          "description": "Value for the `UI_LOAD_USER` environment variable in the server deployment\n",
+          "default": true
         },
         "clients": {
           "properties": {
