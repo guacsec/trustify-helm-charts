@@ -1,0 +1,48 @@
+suite: server cacheTTL
+templates:
+  - templates/services/server/030-Deployment.yaml
+  - templates/services/server/020-ConfigMap-auth.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should set TRUSTD_PAGINATION_TOTAL_CACHE_TTL to 60sec by default
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_PAGINATION_TOTAL_CACHE_TTL
+            value: "60sec"
+
+  - it: should respect custom cacheTTL value
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.cacheTTL: "120sec"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_PAGINATION_TOTAL_CACHE_TTL
+            value: "120sec"
+
+  - it: should pass through different time unit unchanged
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.cacheTTL: "5min"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_PAGINATION_TOTAL_CACHE_TTL
+            value: "5min"
+
+  - it: should omit env var when cacheTTL is empty
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.cacheTTL: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_PAGINATION_TOTAL_CACHE_TTL
