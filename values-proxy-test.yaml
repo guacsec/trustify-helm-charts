@@ -12,11 +12,13 @@ metrics: {}
 # and RDS endpoint hostname.
 
 # --- Image override ---
-# 2.2.5 (buggy — negative baseline):
-#   --set image.fullName="registry.redhat.io/rhtpa/rhtpa-trustification-service-rhel9@sha256:fbc4a7fbc48d1888c314de042fdce35a213aa0d12dce1c097fbac7eb1ad1a2d1"
+# Switch between 2.2.5 (buggy) and 2.2.6 (fixed) by uncommenting one block:
 #
-# 2.2.6 (fixed — positive test):
-#   --set image.fullName="registry.redhat.io/rhtpa/rhtpa-trustification-service-rhel9@sha256:4d024a6b748997b2cc757f53a7f0c3fe7f80789b74f7325837d93ecd0273bb58"
+image:
+  fullName: change-me
+  pullPolicy: IfNotPresent
+  name: null
+  registry: null
 
 modules:
   importer:
@@ -54,3 +56,19 @@ modules:
           source: https://github.com/github/advisory-database
           path: advisories
           disabled: false
+      redhat-sboms:
+        sbom:
+          description: All Red Hat SBOMs
+          period: 1d
+          source: https://security.access.redhat.com/data/sbom/v1/
+          keys:
+            - https://security.access.redhat.com/data/97f5eac4.txt#77E79ABE93673533ED09EBE2DCE3823597F5EAC4
+          disabled: false
+          fetchRetries: 50
+      redhat-csaf:
+        csaf:
+          description: All Red Hat CSAF data
+          period: 1d
+          source: redhat.com
+          disabled: false
+          fetchRetries: 50

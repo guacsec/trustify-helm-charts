@@ -26,8 +26,13 @@ data:
     access_log stdio:/dev/stdout
     cache_log stdio:/dev/stderr
 
+    # Run as non-root on OpenShift (arbitrary UID)
+    pid_filename /tmp/squid.pid
+    coredump_dir /tmp
+
     # Minimal caching — this is a test proxy, not a CDN
     cache deny all
+    cache_dir null /tmp
 
     # Disable via header to keep responses clean
     via off
