@@ -1,0 +1,56 @@
+$schema: "charts/trustify/values.schema.json"
+
+appDomain: change-me
+tracing: {}
+metrics: {}
+
+# --- Infrastructure mode ---
+# OCP-only: use with  -f values-ocp-no-aws.yaml -f values-proxy-test.yaml
+# AWS:      use with  -f values-ocp-aws.yaml   -f values-proxy-test.yaml
+#
+# For AWS mode, update NO_PROXY below to include the Cognito issuer hostname
+# and RDS endpoint hostname.
+
+# --- Image override ---
+# 2.2.5 (buggy — negative baseline):
+#   --set image.fullName="registry.redhat.io/rhtpa/rhtpa-trustification-service-rhel9@sha256:fbc4a7fbc48d1888c314de042fdce35a213aa0d12dce1c097fbac7eb1ad1a2d1"
+#
+# 2.2.6 (fixed — positive test):
+#   --set image.fullName="registry.redhat.io/rhtpa/rhtpa-trustification-service-rhel9@sha256:4d024a6b748997b2cc757f53a7f0c3fe7f80789b74f7325837d93ecd0273bb58"
+
+modules:
+  importer:
+    enabled: true
+    extraEnv:
+      - name: HTTP_PROXY
+        value: "http://squid-proxy:3128"
+      - name: HTTPS_PROXY
+        value: "http://squid-proxy:3128"
+      # Adjust NO_PROXY for your infrastructure mode:
+      #
+      # OCP-only (bundled Keycloak + PostgreSQL):
+      #   localhost,127.0.0.1,.svc,.cluster.local,infrastructure-postgresql,infrastructure-keycloak,trustify-server
+      #   Also append the Keycloak route FQDN: sso-<namespace>.apps.<cluster-domain>
+      #
+      # AWS (RDS + Cognito + S3):
+      #   localhost,127.0.0.1,.svc,.cluster.local,trustify-server,<RDS-endpoint>,<Cognito-issuer-hostname>
+      #   e.g., trustify-db.abc123.us-east-1.rds.amazonaws.com,cognito-idp.us-east-1.amazonaws.com
+      - name: NO_PROXY
+        value: "localhost,127.0.0.1,.svc,.cluster.local,trustify-server"
+
+  createImporters:
+    enabled: true
+    importers:
+      cve:
+        cve:
+          description: CVE list v5
+          period: 1d
+          source: https://github.com/CVEProject/cvelistV5
+          disabled: false
+      osv-github:
+        osv:
+          description: GitHub Advisory Database
+          period: 1d
+          source: https://github.com/github/advisory-database
+          path: advisories
+          disabled: false

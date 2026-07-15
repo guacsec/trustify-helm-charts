@@ -1,0 +1,86 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: squid-config
+data:
+  squid.conf: |
+    # Restrict access to RFC1918 ranges (cluster pods only)
+    acl localnet src 10.0.0.0/8
+    acl localnet src 172.16.0.0/12
+    acl localnet src 192.168.0.0/16
+
+    acl SSL_ports port 443
+    acl Safe_ports port 80
+    acl Safe_ports port 443
+    acl CONNECT method CONNECT
+
+    http_access deny !Safe_ports
+    http_access deny CONNECT !SSL_ports
+    http_access allow localnet
+    http_access deny all
+
+    http_port 3128
+
+    # Log to stdout for oc logs visibility
+    access_log stdio:/dev/stdout
+    cache_log stdio:/dev/stderr
+
+    # Minimal caching — this is a test proxy, not a CDN
+    cache deny all
+
+    # Disable via header to keep responses clean
+    via off
+    forwarded_for delete
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: squid-proxy
+  labels:
+    app: squid-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: squid-proxy
+  template:
+    metadata:
+      labels:
+        app: squid-proxy
+    spec:
+      containers:
+        - name: squid
+          image: registry.redhat.io/rhel9/squid:5.5
+          ports:
+            - containerPort: 3128
+              protocol: TCP
+          volumeMounts:
+            - name: squid-config
+              mountPath: /etc/squid/squid.conf
+              subPath: squid.conf
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: squid-config
+          configMap:
+            name: squid-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: squid-proxy
+spec:
+  selector:
+    app: squid-proxy
+  ports:
+    - port: 3128
+      targetPort: 3128
+      protocol: TCP
+  type: ClusterIP

@@ -293,6 +293,70 @@ modules:
     enabled: false
 ```
 
+## Proxy Testing (QE)
+
+The `values-proxy-test.yaml` file supports QE validation of git-based importer proxy
+auto-detection (TC-5174). It deploys a Squid forward proxy in-cluster and injects
+`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` into the importer pod via the `extraEnv` mechanism.
+
+### Deploy the proxy and network policy
+
+Apply these **before** deploying Trustify to avoid a race condition where the importer
+could reach github.com directly before the NetworkPolicy propagates:
+
+```bash
+oc apply -f squid-proxy.yaml -n $NAMESPACE
+oc apply -f networkpolicy-block-importer-egress.yaml -n $NAMESPACE
+```
+
+### Deploy with proxy test values
+
+```bash
+helm upgrade --install -n $NAMESPACE trustify charts/trustify \
+  --values values-ocp-no-aws.yaml \
+  --values values-proxy-test.yaml \
+  --set-string appDomain=$APP_DOMAIN \
+  --set image.fullName="<image-reference>"
+```
+
+### NO_PROXY configuration
+
+The default `NO_PROXY` in `values-proxy-test.yaml` contains only the minimal
+common baseline. You must extend it with infrastructure-specific hostnames to
+prevent internal traffic from routing through Squid.
+
+**OCP-only (bundled Keycloak + PostgreSQL):**
+
+Add the bundled service names and the Keycloak route FQDN:
+
+```bash
+--set 'modules.importer.extraEnv[2].name=NO_PROXY' \
+--set 'modules.importer.extraEnv[2].value=localhost,127.0.0.1,.svc,.cluster.local,trustify-server,infrastructure-postgresql,infrastructure-keycloak,sso-$NAMESPACE.$APP_DOMAIN'
+```
+
+**AWS (RDS + Cognito + S3):**
+
+Add the RDS endpoint hostname and the Cognito issuer hostname:
+
+```bash
+--set 'modules.importer.extraEnv[2].name=NO_PROXY' \
+--set 'modules.importer.extraEnv[2].value=localhost,127.0.0.1,.svc,.cluster.local,trustify-server,<RDS-endpoint>,<Cognito-issuer-hostname>'
+```
+
+For example:
+
+```bash
+--set 'modules.importer.extraEnv[2].value=localhost,127.0.0.1,.svc,.cluster.local,trustify-server,trustify-db.abc123.us-east-1.rds.amazonaws.com,cognito-idp.us-east-1.amazonaws.com'
+```
+
+| Infrastructure | Hostnames to add to NO_PROXY |
+|---|---|
+| Bundled PostgreSQL | `infrastructure-postgresql` |
+| Bundled Keycloak | `infrastructure-keycloak`, `sso-<namespace>.<appDomain>` |
+| AWS RDS | RDS endpoint (e.g., `trustify-db.abc123.us-east-1.rds.amazonaws.com`) |
+| AWS Cognito | Cognito issuer host (e.g., `cognito-idp.us-east-1.amazonaws.com`) |
+| AWS S3 | Not needed — S3 traffic should go through the proxy |
+
 ## Initial set of importers
 
 You can create an initial set of importers by adding the values file `values-importers.yaml`.

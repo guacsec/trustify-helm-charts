@@ -1,0 +1,48 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-importer-direct-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: importer
+  policyTypes:
+    - Egress
+  egress:
+    # Allow cluster DNS (CoreDNS)
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+
+    # Allow Squid proxy
+    - to:
+        - podSelector:
+            matchLabels:
+              app: squid-proxy
+      ports:
+        - port: 3128
+          protocol: TCP
+
+    # Allow PostgreSQL
+    - ports:
+        - port: 5432
+          protocol: TCP
+
+    # Allow Keycloak (HTTPS)
+    - ports:
+        - port: 8443
+          protocol: TCP
+
+    # Allow Trustify server (HTTP + infrastructure)
+    - ports:
+        - port: 8080
+          protocol: TCP
+        - port: 9010
+          protocol: TCP

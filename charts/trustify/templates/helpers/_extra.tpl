@@ -21,3 +21,19 @@ Arguments (dict):
 {{- . | toYaml }}
 {{- end }}
 {{- end }}
+
+{{/*
+Additional environment variables
+
+Arguments (dict):
+  * root - .
+  * module - module object
+*/}}
+{{- define "trustification.application.extraEnv" }}
+{{- with .module.extraEnv }}
+{{- . | toYaml }}
+{{- end }}
+{{- with .root.Values.extraEnv }}
+{{- . | toYaml }}
+{{- end }}
+{{- end }}
