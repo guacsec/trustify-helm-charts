@@ -45,6 +45,9 @@
 
 ## Testing Conventions
 
+- Helm unit tests via [helm-unittest](https://github.com/helm-unittest/helm-unittest) plugin
+  - Test files live in `charts/trustify/tests/` with suffix `_test.yaml`
+  - Tests render specific templates with custom values and assert on the resulting manifests
 - Chart linting via `ct lint` (chart-testing tool)
 - CI checks for uncommitted schema changes
 - Environment-specific testing with `values-minikube.yaml`
