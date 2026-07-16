@@ -9,6 +9,8 @@ image:
 
 rust: {}
 
+proxy: {}
+
 readOnly: false
 
 ingress:
