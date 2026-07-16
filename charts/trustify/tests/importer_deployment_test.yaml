@@ -1,0 +1,69 @@
+suite: importer proxy env vars
+templates:
+  - templates/services/importer/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should inject all proxy env vars when proxy is configured
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      proxy.httpProxy: "http://squid:3128"
+      proxy.httpsProxy: "http://squid:3128"
+      proxy.noProxy: "localhost,127.0.0.1"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_PROXY
+            value: "http://squid:3128"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTPS_PROXY
+            value: "http://squid:3128"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NO_PROXY
+            value: "localhost,127.0.0.1"
+
+  - it: should omit proxy env vars when proxy is empty
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_PROXY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTPS_PROXY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NO_PROXY
+          any: true
+
+  - it: should inject only HTTP_PROXY when only httpProxy is set
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      proxy.httpProxy: "http://squid:3128"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_PROXY
+            value: "http://squid:3128"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTPS_PROXY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NO_PROXY
+          any: true
