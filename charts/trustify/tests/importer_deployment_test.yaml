@@ -20,12 +20,27 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
+            name: http_proxy
+            value: "http://squid:3128"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: HTTPS_PROXY
             value: "http://squid:3128"
       - contains:
           path: spec.template.spec.containers[0].env
           content:
+            name: https_proxy
+            value: "http://squid:3128"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: NO_PROXY
+            value: "localhost,127.0.0.1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: no_proxy
             value: "localhost,127.0.0.1"
 
   - it: should omit proxy env vars when proxy is empty
@@ -39,12 +54,27 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
+            name: http_proxy
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: HTTPS_PROXY
           any: true
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
+            name: https_proxy
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: NO_PROXY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: no_proxy
           any: true
 
   - it: should inject only HTTP_PROXY when only httpProxy is set
@@ -57,6 +87,11 @@ tests:
           content:
             name: HTTP_PROXY
             value: "http://squid:3128"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: http_proxy
+            value: "http://squid:3128"
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
@@ -65,5 +100,15 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
+            name: https_proxy
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: NO_PROXY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: no_proxy
           any: true
