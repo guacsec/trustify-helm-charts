@@ -278,6 +278,21 @@ properties:
           - $ref: "#/definitions/Feature"
           - $ref: "#/definitions/Image"
           - $ref: "#/definitions/Application"
+          - type: object
+            properties:
+              dataMigrationSkip:
+                type: array
+                items:
+                  type: string
+                description: |
+                  List of data migration names to skip during the migration job.
+                  Sets the `MIGRATION_DATA_SKIP` environment variable.
+              dataMigrationSkipAll:
+                type: boolean
+                default: false
+                description: |
+                  Skip all data migrations. Sets the `MIGRATION_DATA_SKIP_ALL` environment variable.
+                  Conflicts with `dataMigrationSkip`.
 
       createImporters:
         description: |

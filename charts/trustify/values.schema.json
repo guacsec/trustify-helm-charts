@@ -341,6 +341,23 @@
             },
             {
               "$ref": "#/definitions/Application"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dataMigrationSkip": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of data migration names to skip during the migration job.\nSets the `MIGRATION_DATA_SKIP` environment variable.\n"
+                },
+                "dataMigrationSkipAll": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Skip all data migrations. Sets the `MIGRATION_DATA_SKIP_ALL` environment variable.\nConflicts with `dataMigrationSkip`.\n"
+                }
+              }
             }
           ]
         },
