@@ -1,0 +1,138 @@
+suite: server PersistentVolumeClaim configuration
+templates:
+  - templates/services/server/010-PersistentVolumeClaim-storage.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should render when server is enabled and storage is filesystem
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      modules.server.enabled: true
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: PersistentVolumeClaim
+
+  - it: should not render when server is disabled
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      modules.server.enabled: false
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when storage type is s3
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      modules.server.enabled: true
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-bucket
+        region: us-west-2
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should set correct PVC name
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - equal:
+          path: metadata.name
+          value: storage
+
+  - it: should use ReadWriteOnce access mode
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - contains:
+          path: spec.accessModes
+          content: ReadWriteOnce
+
+  - it: should set storage size from values
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 50Gi
+    asserts:
+      - equal:
+          path: spec.resources.requests.storage
+          value: 50Gi
+
+  - it: should set storageClassName when specified
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+        storageClassName: fast-ssd
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: fast-ssd
+
+  - it: should omit storageClassName when not specified
+    template: templates/services/server/010-PersistentVolumeClaim-storage.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - isNull:
+          path: spec.storageClassName

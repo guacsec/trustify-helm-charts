@@ -1,0 +1,97 @@
+suite: server service configuration
+templates:
+  - templates/services/server/040-Service.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when server is enabled
+    template: templates/services/server/040-Service.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Service
+
+  - it: should not render when server is disabled
+    template: templates/services/server/040-Service.yaml
+    set:
+      modules.server.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should set correct service name
+    template: templates/services/server/040-Service.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: server
+
+  - it: should include standard labels
+    template: templates/services/server/040-Service.yaml
+    asserts:
+      - isNotNull:
+          path: metadata.labels["app.kubernetes.io/name"]
+      - isNotNull:
+          path: metadata.labels["app.kubernetes.io/component"]
+
+  - it: should use ClusterIP service type
+    template: templates/services/server/040-Service.yaml
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should expose port 80 when OpenShift is disabled
+    template: templates/services/server/040-Service.yaml
+    set:
+      openshift.enabled: false
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            port: 80
+            targetPort: endpoint
+            protocol: TCP
+            name: endpoint
+
+  - it: should expose port 443 when OpenShift is enabled
+    template: templates/services/server/040-Service.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            port: 443
+            targetPort: endpoint
+            protocol: TCP
+            name: endpoint
+
+  - it: should include serving-cert annotation when OpenShift is enabled
+    template: templates/services/server/040-Service.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["service.beta.openshift.io/serving-cert-secret-name"]
+          value: server-tls
+
+  - it: should NOT include serving-cert annotation when OpenShift is disabled
+    template: templates/services/server/040-Service.yaml
+    set:
+      openshift.enabled: false
+    asserts:
+      - isNull:
+          path: metadata.annotations["service.beta.openshift.io/serving-cert-secret-name"]
+
+  - it: should include selector labels matching deployment
+    template: templates/services/server/040-Service.yaml
+    asserts:
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: server
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: server

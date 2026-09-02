@@ -1,0 +1,164 @@
+suite: server metrics and tracing configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  # TODO: metrics pod label not yet implemented in template
+  # - it: should set metrics pod label when metrics are enabled
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     metrics:
+  #       enabled: true
+  #     tracing:
+  #       enabled: false
+  #     collector:
+  #       endpoint: http://otel-collector:4317
+  #   asserts:
+  #     - equal:
+  #         path: spec.template.metadata.labels["trustification.dev/metrics"]
+  #         value: "true"
+
+  # - it: should NOT set metrics pod label when metrics are disabled
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     metrics.enabled: false
+  #   asserts:
+  #     - isNull:
+  #         path: spec.template.metadata.labels["trustification.dev/metrics"]
+
+  - it: should set METRICS env var when metrics are enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      metrics.enabled: true
+      tracing:
+        enabled: false
+      collector:
+        endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: METRICS
+            value: enabled
+
+  - it: should set OTEL_METRIC_EXPORT_INTERVAL
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      metrics.enabled: true
+      tracing:
+        enabled: false
+      collector:
+        endpoint: http://otel-collector:4317
+      metrics.otelMetricExportInterval: 30000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_METRIC_EXPORT_INTERVAL
+            value: "30000"
+
+  # TODO: Module-level metrics override not yet implemented in template
+  # - it: should prefer module-level metrics over global
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     metrics.enabled: false
+  #     modules.server.metrics.enabled: true
+  #     tracing:
+  #       enabled: false
+  #     collector:
+  #       endpoint: http://otel-collector:4317
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: METRICS
+  #           value: enabled
+
+  - it: should set TRACING env var when tracing is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      tracing:
+        enabled: true
+      collector:
+        endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRACING
+            value: enabled
+
+  - it: should set OTEL_BSP_MAX_EXPORT_BATCH_SIZE
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      tracing:
+        enabled: true
+        otelBspMaxExportBatchSize: 512
+      collector:
+        endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_BSP_MAX_EXPORT_BATCH_SIZE
+            value: "512"
+
+  - it: should set OTEL_TRACES_SAMPLER
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      tracing:
+        enabled: true
+        otelTracesSampler: parentbased_traceidratio
+      collector:
+        endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_TRACES_SAMPLER
+            value: parentbased_traceidratio
+
+  - it: should set OTEL_TRACES_SAMPLER_ARG
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      tracing:
+        enabled: true
+        otelTracesSamplerArg: "0.5"
+      collector:
+        endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_TRACES_SAMPLER_ARG
+            value: "0.5"
+
+  # TODO: Module-level tracing override not yet implemented in template
+  # - it: should prefer module-level tracing over global
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     tracing.enabled: false
+  #     modules.server.tracing.enabled: true
+  #     collector:
+  #       endpoint: http://otel-collector:4317
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: TRACING
+  #           value: enabled
+
+  - it: should set OTEL_EXPORTER_OTLP_ENDPOINT when collector is configured
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      metrics.enabled: true
+      collector.endpoint: http://otel-collector:4317
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://otel-collector:4317

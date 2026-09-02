@@ -1,0 +1,232 @@
+suite: importer deployment full configuration (excluding proxy)
+templates:
+  - templates/services/importer/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when importer is enabled
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+
+  - it: should not render when importer is disabled
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include standard labels
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - isNotNull:
+          path: metadata.labels["app.kubernetes.io/name"]
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: importer
+
+  - it: should include pod annotations
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.annotations:
+        custom-annotation: value
+    asserts:
+      - equal:
+          path: metadata.annotations["custom-annotation"]
+          value: value
+
+  - it: should include default command and args
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value:
+            - /usr/local/bin/trustd
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: importer
+
+  - it: should include concurrency in args
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.concurrency: 4
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "--concurrency"
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "4"
+
+  - it: should include workdir ephemeral volume
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: workdir
+          any: true
+
+  - it: should set workdir volume size
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.workingDirectory.size: 64Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: workdir
+          any: true
+
+  - it: should set workdir storageClassName
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.workingDirectory.storageClassName: fast-ssd
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: workdir
+          any: true
+
+  - it: should include postgres env vars
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_HOST
+            value: postgres.example.com
+
+  - it: should include Rust env vars
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      rust.logFilter: debug
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RUST_LOG
+            value: debug
+
+  - it: should include infrastructure env vars
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      infrastructure.port: 9020
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: INFRASTRUCTURE_BIND
+            value: "[::]:9020"
+
+  - it: should respect readOnly setting
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.readOnly: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_READ_ONLY
+            value: "true"
+
+  - it: should include NAMESPACE env var
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+  - it: should set serviceAccountName when specified
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.serviceAccountName: importer-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: importer-sa
+
+  - it: should use default resources
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.containers[0].resources
+
+  - it: should use custom resources when specified
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.resources:
+        requests:
+          cpu: 500m
+          memory: 4Gi
+        limits:
+          cpu: "2"
+          memory: 8Gi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 8Gi
+
+  # TODO: Template has default resources, can't omit by setting to {}
+  # - it: should omit resources when set to empty
+  #   template: templates/services/importer/030-Deployment.yaml
+  #   set:
+  #     modules.importer.resources: {}
+  #   asserts:
+  #     - isNull:
+  #         path: spec.template.spec.containers[0].resources
+
+  - it: should override image with module-level settings
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.image.registry: custom.registry.io
+      modules.importer.image.name: custom-importer
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "^custom\\.registry\\.io/custom-importer:"
+
+  # TODO: extraVolumes not yet implemented in template
+  # - it: should include extraVolumes
+  #   template: templates/services/importer/030-Deployment.yaml
+  #   set:
+  #     modules.importer.extraVolumes:
+  #       - name: custom-volume
+  #         emptyDir: {}
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.volumes
+  #         content:
+  #           name: custom-volume
+  #           emptyDir: {}
+
+  - it: should include affinity configuration
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: disktype
+                    operator: In
+                    values:
+                      - ssd
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity

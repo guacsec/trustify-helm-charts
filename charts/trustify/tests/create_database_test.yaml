@@ -1,0 +1,244 @@
+suite: create database initialization
+templates:
+  - templates/init/create-database/010-ConfigMap.yaml
+  - templates/init/create-database/020-Job.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render ConfigMap when createDatabase is enabled
+    template: templates/init/create-database/010-ConfigMap.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+
+  - it: should not render ConfigMap when createDatabase is disabled
+    template: templates/init/create-database/010-ConfigMap.yaml
+    set:
+      modules.createDatabase.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render Job when createDatabase is enabled
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  - it: should not render Job when createDatabase is disabled
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include Helm pre-install hook annotation
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+
+  - it: should set hook weight to 5
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "5"
+
+  - it: should include ArgoCD sync-wave 0 annotation
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "0"
+
+  - it: should use postgres image
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "postgres:"
+
+  - it: should use custom postgres image when specified
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      modules.createDatabase.image.registry: custom.registry.io
+      modules.createDatabase.image.name: custom-postgres
+      modules.createDatabase.image.version: "16"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry.io/custom-postgres:16
+
+  - it: should set PGHOST env var
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGHOST
+            value: postgres.example.com
+
+  - it: should set database name env var
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      database.name: trustify_db
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_NAME
+            value: trustify_db
+
+  - it: should set database username env var
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      database.username: dbuser
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_USERNAME
+            value: dbuser
+
+  - it: should set database password env var
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      database.password: mypassword
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DB_PASSWORD
+            value: mypassword
+
+  - it: should include init-data volume
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: init-data
+          any: true
+
+  - it: should mount init-data volume
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: init-data
+            mountPath: /etc/init-data
+
+  - it: should execute psql command
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].command
+          content: psql
+
+  - it: should set backoffLimit
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - isNotNull:
+          path: spec.backoffLimit
+
+  - it: should set restartPolicy
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: OnFailure
+
+  - it: should set ttlSecondsAfterFinished
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+    asserts:
+      - isNotNull:
+          path: spec.ttlSecondsAfterFinished
+
+  - it: should set resources when specified
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      modules.createDatabase.resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m
+
+  - it: should set serviceAccountName when specified
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      modules.createDatabase.serviceAccountName: db-init-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: db-init-sa
+
+  - it: should include annotations
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      modules.createDatabase.enabled: true
+      modules.createDatabase.annotations:
+        custom: value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom
+          value: value
+
+  # TODO: extraVolumes not yet implemented in template
+  # - it: should include extraVolumes
+  #   template: templates/init/create-database/020-Job.yaml
+  #   set:
+  #     modules.createDatabase.enabled: true
+  #     modules.createDatabase.extraVolumes:
+  #       - name: custom-volume
+  #         emptyDir: {}
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.volumes
+  #         content:
+  #           name: custom-volume
+  #           emptyDir: {}

@@ -1,0 +1,156 @@
+suite: create importers initialization job
+templates:
+  - templates/init/create-importers/020-Job.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when createImporters is enabled
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  - it: should not render when createImporters is disabled
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include Helm hook annotation for post-install and pre-upgrade
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,pre-upgrade
+
+  - it: should set hook weight to 40
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "40"
+
+  - it: should include ArgoCD sync-wave 4 annotation
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "4"
+
+  - it: should use postgres image
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "postgres:"
+
+  - it: should use custom postgres image when specified
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      modules.createImporters.image.registry: custom.registry.io
+      modules.createImporters.image.name: custom-postgres
+      modules.createImporters.image.version: "16"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry.io/custom-postgres:16
+
+  - it: should set PGHOST env var
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGHOST
+            value: postgres.example.com
+
+
+
+  - it: should set resources when specified
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      modules.createImporters.resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m
+
+  - it: should set serviceAccountName when specified
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      modules.createImporters.serviceAccountName: importers-init-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: importers-init-sa
+
+  - it: should include annotations
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      modules.createImporters.annotations:
+        custom: value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom
+          value: value
+
+  # TODO: extraVolumes not yet implemented in template
+  # - it: should include extraVolumes
+  #   template: templates/init/create-importers/020-Job.yaml
+  #   set:
+  #     modules.createImporters.enabled: true
+  #     modules.createImporters.extraVolumes:
+  #       - name: custom-volume
+  #         emptyDir: {}
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.volumes
+  #         content:
+  #           name: custom-volume
+  #           emptyDir: {}
+
+  - it: should merge database configuration override
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      database:
+        host: global-host
+        name: trustify
+        username: user
+        password: pass
+      modules.createImporters.database:
+        host: override-host
+        name: trustify
+        username: user
+        password: pass
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGHOST
+            value: override-host

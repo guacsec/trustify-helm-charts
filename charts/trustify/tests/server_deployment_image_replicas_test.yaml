@@ -1,0 +1,85 @@
+suite: server image and replicas configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should use default image from global config
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "^ghcr\\.io/guacsec/trustd:"
+
+  - it: should use default pullPolicy
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+
+  - it: should override image with module-level registry
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.image.registry: custom.registry.io
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^custom\.registry\.io/
+
+  - it: should override image with module-level name
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.image.name: custom-trustd
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "/custom-trustd:"
+
+  - it: should override image with module-level version
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.image.version: "v1.2.3"
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: :v1\.2\.3$
+
+  - it: should use module-level fullName override when specified
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.image.fullName: completely-custom-image:tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: completely-custom-image:tag
+
+  - it: should use global image name override
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      image.name: global-custom-name
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "/global-custom-name:"
+
+  - it: should respect global replicas setting
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      replicas: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should prefer module-level replicas over global
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      replicas: 3
+      modules.server.replicas: 5
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 5

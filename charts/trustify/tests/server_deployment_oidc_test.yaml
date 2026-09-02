@@ -1,0 +1,134 @@
+suite: server OIDC and authentication configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should set UI_ISSUER_URL with default Keycloak
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      appDomain: .example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_ISSUER_URL
+            value: http://sso.example.com/realms/trustify
+
+  - it: should set custom UI_ISSUER_URL when specified
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.issuerUrl: https://auth.example.com/realms/myrealm
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_ISSUER_URL
+            value: https://auth.example.com/realms/myrealm
+
+  - it: should set default UI_CLIENT_ID
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_CLIENT_ID
+            value: frontend
+
+  - it: should set custom UI_CLIENT_ID when specified
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.clients.frontend.clientId: my-custom-client
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_CLIENT_ID
+            value: my-custom-client
+
+  - it: should set UI_LOAD_USER to true by default
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_LOAD_USER
+            value: "true"
+
+  - it: should respect custom UI_LOAD_USER
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.loadUser: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_LOAD_USER
+            value: "false"
+
+  - it: should omit UI_SCOPE when empty
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.uiScope: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_SCOPE
+          any: true
+
+  - it: should set UI_SCOPE when specified
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.uiScope: "openid profile email"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UI_SCOPE
+            value: "openid profile email"
+
+  - it: should set SWAGGER_UI_OIDC_ISSUER_URL
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      appDomain: .example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SWAGGER_UI_OIDC_ISSUER_URL
+            value: http://sso.example.com/realms/trustify
+
+  - it: should set SWAGGER_UI_OIDC_CLIENT_ID
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SWAGGER_UI_OIDC_CLIENT_ID
+            value: frontend
+
+  - it: should set OIDC insecure when global oidc.insecure is true
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      oidc.insecure: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SWAGGER_UI_OIDC_TLS_INSECURE
+            value: "true"
+
+  # TODO: Per-client TLS insecure not yet implemented in template
+  # - it: should set OIDC insecure for specific client
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     oidc.clients.frontend.tls.insecure: true
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: SWAGGER_UI_OIDC_TLS_INSECURE
+  #           value: "true"

@@ -1,0 +1,260 @@
+suite: server miscellaneous env vars and configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should respect global readOnly setting
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      readOnly: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_READ_ONLY
+            value: "true"
+
+  - it: should prefer module-level readOnly over global
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      readOnly: false
+      modules.server.readOnly: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_READ_ONLY
+            value: "true"
+
+  - it: should set Rust log filter
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      rust.logFilter: debug
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RUST_LOG
+            value: debug
+
+  - it: should set Rust backtrace
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      rust:
+        backtrace: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RUST_BACKTRACE
+            value: "1"
+
+  - it: should set infrastructure port
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      infrastructure.port: 9020
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: INFRASTRUCTURE_BIND
+            value: "[::]:9020"
+
+  - it: should set initialDelaySeconds for probes
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.infrastructure.initialDelaySeconds: 30
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+          value: 30
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 30
+
+  # TODO: HTTP server config env vars not yet implemented in template
+  # - it: should set HTTP server request limit
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     modules.server.http.requestLimit: 10485760
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: HTTP_SERVER_REQUEST_LIMIT
+  #           value: "10485760"
+
+  # - it: should set HTTP server JSON limit
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     modules.server.http.jsonLimit: 5242880
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: HTTP_SERVER_JSON_LIMIT
+  #           value: "5242880"
+
+  # - it: should set HTTP server workers
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     modules.server.http.workers: 4
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: HTTP_SERVER_WORKERS
+  #           value: "4"
+
+  - it: should set uploadLimit for all upload types
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.uploadLimit: 104857600
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_SBOM_UPLOAD_LIMIT
+            value: "1.048576e+08"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_ADVISORY_UPLOAD_LIMIT
+            value: "1.048576e+08"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DATASET_ENTRY_LIMIT
+            value: "1.048576e+08"
+
+  - it: should set maximumCacheSize
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.maximumCacheSize: 1000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_MAX_CACHE_SIZE
+            value: "1000"
+
+  - it: should include default command and args
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value:
+            - /usr/local/bin/trustd
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: api
+
+  - it: should expose endpoint port 8080
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8080
+            name: endpoint
+            protocol: TCP
+
+  - it: should include infrastructure port
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 9010
+            name: infra
+            protocol: TCP
+
+  - it: should set serviceAccountName when specified
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.serviceAccountName: custom-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: custom-sa
+
+  - it: should include pod annotations
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.annotations:
+        custom-annotation: value
+    asserts:
+      - equal:
+          path: metadata.annotations["custom-annotation"]
+          value: value
+
+  - it: should set resources requests and limits
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 2Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "2"
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 4Gi
+
+  # TODO: extraVolumes not yet implemented in template
+  # - it: should include extraVolumes
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     modules.server.extraVolumes:
+  #       - name: custom-volume
+  #         emptyDir: {}
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.volumes
+  #         content:
+  #           name: custom-volume
+  #           emptyDir: {}
+
+  # TODO: extraVolumeMounts not yet implemented in template
+  # - it: should include extraVolumeMounts
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     modules.server.extraVolumeMounts:
+  #       - name: custom-volume
+  #         mountPath: /custom
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].volumeMounts
+  #         content:
+  #           name: custom-volume
+  #           mountPath: /custom
+
+  - it: should include affinity configuration
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: disktype
+                    operator: In
+                    values:
+                      - ssd
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity

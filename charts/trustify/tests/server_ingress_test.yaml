@@ -1,0 +1,136 @@
+suite: server ingress and route configuration
+templates:
+  - templates/services/server/050-Ingress.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when both server and ingress are enabled
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      modules.server.enabled: true
+      ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: should not render when server is disabled
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      modules.server.enabled: false
+      ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when ingress is disabled
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      modules.server.enabled: true
+      ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should use networking.k8s.io/v1 apiVersion for Ingress
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      openshift.enabled: false
+    asserts:
+      - equal:
+          path: apiVersion
+          value: networking.k8s.io/v1
+      - isKind:
+          of: Ingress
+
+  # TODO: OpenShift Route apiVersion not yet implemented in template (renders Ingress instead)
+  # - it: should use route.openshift.io/v1 apiVersion for Route when OpenShift is enabled
+  #   template: templates/services/server/050-Ingress.yaml
+  #   set:
+  #     appDomain: .localhost
+  #     openshift.enabled: true
+  #   asserts:
+  #     - equal:
+  #         path: apiVersion
+  #         value: route.openshift.io/v1
+  #     - isKind:
+  #         of: Route
+
+  - it: should construct host from appDomain
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      openshift.enabled: false
+    asserts:
+      - matchRegex:
+          path: spec.rules[0].host
+          pattern: ^.*\.localhost$
+
+  - it: should use global ingressClassName
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      ingress.className: nginx
+      openshift.enabled: false
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: should prefer module-level ingressClassName over global
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      ingress.className: nginx
+      modules.server.ingress.className: traefik
+      openshift.enabled: false
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: traefik
+
+  - it: should include TLS configuration
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      modules.server.ingress.tls:
+        - secretName: server-tls-secret
+          hosts:
+            - server.localhost
+      openshift.enabled: false
+    asserts:
+      - contains:
+          path: spec.tls
+          content:
+            secretName: server-tls-secret
+            hosts:
+              - server.localhost
+
+  - it: should route to correct backend service
+    template: templates/services/server/050-Ingress.yaml
+    set:
+      appDomain: .localhost
+      openshift.enabled: false
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: server
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: endpoint
+
+  # TODO: OpenShift Route termination not yet implemented in template
+  # - it: should set route termination to edge when OpenShift is enabled
+  #   template: templates/services/server/050-Ingress.yaml
+  #   set:
+  #     appDomain: .localhost
+  #     openshift.enabled: true
+  #   asserts:
+  #     - equal:
+  #         path: spec.tls.termination
+  #         value: edge
+  #     - equal:
+  #         path: spec.tls.insecureEdgeTerminationPolicy
+  #         value: Redirect
