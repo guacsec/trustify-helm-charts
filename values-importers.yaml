@@ -43,3 +43,16 @@ modules:
           source: quay.io
           namespace: redhat-user-workloads
           disabled: true
+          # auth:             # Optional — omit for unauthenticated access.
+          #   method:
+          #     type: bearer
+          #     token:
+          #       type: env          # K8s envFrom:secretRef — recommended for production
+          #       value: QUAY_API_TOKEN
+          # Inline variant (dev only — stores secret in DB):
+          # auth:
+          #   method:
+          #     type: bearer
+          #     token:
+          #       type: inline
+          #       value: my-token-here
