@@ -1,0 +1,40 @@
+suite: server recommendPatterns
+templates:
+  - templates/services/server/030-Deployment.yaml
+  - templates/services/server/020-ConfigMap-auth.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should not inject TRUSTD_RECOMMEND_PATTERNS when recommendPatterns is empty (default)
+    template: templates/services/server/030-Deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_RECOMMEND_PATTERNS
+
+  - it: should inject TRUSTD_RECOMMEND_PATTERNS with a single pattern
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.recommendPatterns:
+        - "^(.+)\\.redhat-[0-9]+$"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_RECOMMEND_PATTERNS
+            value: "^(.+)\\.redhat-[0-9]+$"
+
+  - it: should inject TRUSTD_RECOMMEND_PATTERNS comma-joined when multiple patterns supplied
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.recommendPatterns:
+        - "^(.+)\\.redhat-[0-9]+$"
+        - "^(.+)\\.SP[0-9]+-redhat-[0-9]+$"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_RECOMMEND_PATTERNS
+            value: "^(.+)\\.redhat-[0-9]+$,^(.+)\\.SP[0-9]+-redhat-[0-9]+$"

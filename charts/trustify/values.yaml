@@ -54,6 +54,7 @@ modules:
     metrics: {}
     rust: {}
     cacheTTL: "60sec"
+    recommendPatterns: []
     resources:
       requests:
         cpu: 1
