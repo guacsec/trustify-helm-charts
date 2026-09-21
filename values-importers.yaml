@@ -47,7 +47,13 @@ modules:
           #   method:
           #     type: bearer
           #     token:
-          #       type: env          # K8s envFrom:secretRef — recommended for production
+          #       # The importer pod must expose QUAY_API_TOKEN from a K8s Secret, e.g.:
+          #       #   kubectl create secret generic quay-api-token --from-literal=QUAY_API_TOKEN=<token>
+          #       # Then mount it via the Deployment's envFrom (or secretKeyRef):
+          #       #   envFrom:
+          #       #     - secretRef:
+          #       #         name: quay-api-token
+          #       type: env
           #       value: QUAY_API_TOKEN
           # Inline variant (dev only — stores secret in DB):
           # auth:
