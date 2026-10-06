@@ -1,0 +1,238 @@
+suite: server storage configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should set filesystem storage strategy by default
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_STRATEGY
+            value: fs
+
+  - it: should set FS_PATH for filesystem storage
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_FS_PATH
+            value: /data/storage
+
+  - it: should include storage volume mount for filesystem
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: storage
+            mountPath: /data/storage
+
+  - it: should include PVC volume for filesystem
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: storage
+          any: true
+
+  - it: should include pod affinity for filesystem storage
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity
+
+  - it: should set S3 storage strategy
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_STRATEGY
+            value: s3
+
+  - it: should set S3 access key
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_ACCESS_KEY
+            value: AKIAIOSFODNN7EXAMPLE
+
+  - it: should set S3 secret key
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_SECRET_KEY
+            value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+  - it: should set S3 region
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_REGION
+            value: us-west-2
+
+  - it: should set S3 bucket
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_BUCKET
+            value: my-trustify-bucket
+
+  - it: should NOT include storage volume for S3
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-trustify-bucket
+        region: us-west-2
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: storage
+          any: true
+
+  - it: should set compression when enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: filesystem
+        size: 10Gi
+        compression: zstd
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_COMPRESSION
+            value: zstd

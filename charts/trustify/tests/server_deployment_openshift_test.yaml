@@ -1,0 +1,111 @@
+suite: server OpenShift-specific configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  # TODO: CLIENT_TLS_CA_CERTIFICATES not yet implemented in template
+  # - it: should set CLIENT_TLS_CA_CERTIFICATES when OpenShift is enabled
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     openshift:
+  #       enabled: true
+  #       useServiceCa: true
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: CLIENT_TLS_CA_CERTIFICATES
+  #           value: /run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
+  # - it: should NOT set CLIENT_TLS_CA_CERTIFICATES when OpenShift is disabled
+  #   template: templates/services/server/030-Deployment.yaml
+  #   set:
+  #     openshift.enabled: false
+  #   asserts:
+  #     - notContains:
+  #         path: spec.template.spec.containers[0].env
+  #         content:
+  #           name: CLIENT_TLS_CA_CERTIFICATES
+  #         any: true
+
+  - it: should set HTTP_SERVER_TLS_ENABLED when OpenShift is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_SERVER_TLS_ENABLED
+            value: "true"
+
+  - it: should set HTTP_SERVER_TLS_KEY_FILE when OpenShift is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_SERVER_TLS_KEY_FILE
+            value: /etc/tls/tls.key
+
+  - it: should set HTTP_SERVER_TLS_CERTIFICATE_FILE when OpenShift is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HTTP_SERVER_TLS_CERTIFICATE_FILE
+            value: /etc/tls/tls.crt
+
+  - it: should include TLS volume mount when OpenShift is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: tls
+            mountPath: /etc/tls
+            readOnly: true
+
+  - it: should include TLS secret volume when OpenShift is enabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: tls
+            secret:
+              secretName: server-tls
+
+  - it: should NOT include TLS volume when OpenShift is disabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: tls
+          any: true
+
+  - it: should NOT include TLS volume mount when OpenShift is disabled
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: tls
+          any: true

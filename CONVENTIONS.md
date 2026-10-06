@@ -48,6 +48,26 @@
 - Helm unit tests via [helm-unittest](https://github.com/helm-unittest/helm-unittest) plugin
   - Test files live in `charts/trustify/tests/` with suffix `_test.yaml`
   - Tests render specific templates with custom values and assert on the resulting manifests
+  - **Test file naming**: `<template>_<concern>_test.yaml` (e.g., `server_deployment_postgres_test.yaml`, `server_service_test.yaml`)
+  - **Test file location**: `charts/trustify/tests/` for all chart tests
+  - **Values overlay convention**: All tests use `../values.yaml` + `../../../values-minikube.yaml` as base values, then override specific values with `set:` directives
+  - **Test organization**: One test file per concern area per template (e.g., separate files for postgres config, storage config, OIDC config on the same deployment template)
+  - **Assertion types used**:
+    - `contains` / `notContains` — verify presence/absence of specific content in arrays or objects
+    - `hasDocuments` — verify template renders expected number of documents (often used with conditional rendering tests)
+    - `failedTemplate` — verify template fails with specific error message (used for validation/mutual exclusion checks)
+    - `matchRegex` / `notMatchRegex` — pattern matching for dynamic values (e.g., image URLs, resource names)
+    - `equal` / `notEqual` — exact value comparisons
+    - `isNotNull` / `isNull` — check for presence/absence of fields
+    - `isKind` — verify Kubernetes resource kind
+  - **Coverage expectations for new templates**:
+    - Every template must have at least one test file covering its conditional guard (enabled flag)
+    - Every values field in `values.yaml` / `values.schema.yaml` must be exercised by at least one test
+    - Resources configuration (requests + limits) must be tested using the `trustification.application.container` helper
+    - ValueOrRef pattern (secretKeyRef, configMapKeyRef) must be tested on database configuration
+    - OpenShift-specific behavior must be tested via `openshift.enabled` flag
+    - Storage type switching (filesystem vs s3) must be tested with all required fields
+    - Mutual exclusion constraints must be tested with `failedTemplate` assertions
 - Chart linting via `ct lint` (chart-testing tool)
 - CI checks for uncommitted schema changes
 - Environment-specific testing with `values-minikube.yaml`

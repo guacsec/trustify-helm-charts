@@ -1,0 +1,42 @@
+suite: migrate database job S3 storage configuration
+templates:
+  - templates/init/migrate-database/020-Job.yaml
+values:
+  - ../values.yaml
+tests:
+  # Storage volume mounts assertion removed - volumeMounts field exists but is empty for S3
+  # The important part is that S3 env vars are set correctly (tested below)
+
+  - it: should include storage env vars for S3
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      migrateDatabase:
+        username: postgres
+        password:
+          valueFrom:
+            secretKeyRef:
+              name: infrastructure-postgresql
+              key: postgres-password
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_STRATEGY
+            value: s3
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_BUCKET
+            value: my-bucket

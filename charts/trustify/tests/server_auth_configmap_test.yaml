@@ -1,0 +1,65 @@
+suite: server authentication ConfigMap configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when server is enabled
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    set:
+      modules.server.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+
+  - it: should not render when server is disabled
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    set:
+      modules.server.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should set correct ConfigMap name
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: server-auth
+
+  - it: should include auth.yaml key
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    asserts:
+      - isNotNull:
+          path: data["auth.yaml"]
+
+  - it: should contain keycloak configuration by default
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    set:
+      appDomain: .localhost
+    asserts:
+      - matchRegex:
+          path: data["auth.yaml"]
+          pattern: .*issuerUrl.*
+
+  - it: should support custom issuer URL
+    template: templates/services/server/020-ConfigMap-auth.yaml
+    set:
+      oidc:
+        issuerUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_EXAMPLE
+    asserts:
+      - matchRegex:
+          path: data["auth.yaml"]
+          pattern: .*cognito.*
+
+  # TODO: authConfigMapRef feature not yet implemented in template
+  # - it: should not render when configMapRef is specified
+  #   template: templates/services/server/020-ConfigMap-auth.yaml
+  #   set:
+  #     modules.server.authConfigMapRef: existing-auth-config
+  #   asserts:
+  #     - hasDocuments:
+  #         count: 0

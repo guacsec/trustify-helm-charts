@@ -1,0 +1,191 @@
+suite: migrate database job configuration
+templates:
+  - templates/init/migrate-database/020-Job.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should render when migrateDatabase is enabled
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  - it: should not render when migrateDatabase is disabled
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include Helm hook annotation
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+
+  - it: should set hook weight to 20
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "20"
+
+  - it: should include ArgoCD sync-wave 3 annotation
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "3"
+
+  - it: should execute trustd db migrate command
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].command
+          content: trustd
+      - contains:
+          path: spec.template.spec.containers[0].command
+          content: db
+      - contains:
+          path: spec.template.spec.containers[0].command
+          content: migrate
+
+  - it: should set MIGRATION_DATA_SKIP with comma-separated list
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.dataMigrationSkip:
+        - m0002000_add_sbom_properties
+        - m0003000_add_advisory_index
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MIGRATION_DATA_SKIP
+            value: m0002000_add_sbom_properties,m0003000_add_advisory_index
+
+  - it: should set MIGRATION_DATA_SKIP_ALL when enabled
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.dataMigrationSkipAll: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MIGRATION_DATA_SKIP_ALL
+            value: "true"
+
+  - it: should fail when both dataMigrationSkip and dataMigrationSkipAll are set (mutual exclusion)
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.dataMigrationSkip:
+        - m0002000_add_sbom_properties
+      modules.migrateDatabase.dataMigrationSkipAll: true
+    asserts:
+      - failedTemplate:
+          errorMessage: dataMigrationSkip and dataMigrationSkipAll are mutually exclusive
+
+  - it: should include storage volume mount for filesystem
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      storage.type: filesystem
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: storage
+            mountPath: /data/storage
+
+  - it: should set resources when specified
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 2Gi
+
+  - it: should override image with module-level settings
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.image.registry: custom.registry.io
+      modules.migrateDatabase.image.version: v1.2.3
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^custom\.registry\.io/.*:v1\.2\.3$
+
+  - it: should set serviceAccountName when specified
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      modules.migrateDatabase.serviceAccountName: migrate-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: migrate-sa
+
+  # TODO: Pod template annotations not yet implemented in template
+  # - it: should include annotations
+  #   template: templates/init/migrate-database/020-Job.yaml
+  #   set:
+  #     modules.migrateDatabase.enabled: true
+  #     modules.migrateDatabase.annotations:
+  #       custom-annotation: value
+  #   asserts:
+  #     - equal:
+  #         path: spec.template.metadata.annotations["custom-annotation"]
+  #         value: value
+
+  # TODO: extraVolumes not yet implemented in template
+  # - it: should include extraVolumes
+  #   template: templates/init/migrate-database/020-Job.yaml
+  #   set:
+  #     modules.migrateDatabase.enabled: true
+  #     modules.migrateDatabase.extraVolumes:
+  #       - name: custom-volume
+  #         emptyDir: {}
+  #   asserts:
+  #     - contains:
+  #         path: spec.template.spec.volumes
+  #         content:
+  #           name: custom-volume
+  #           emptyDir: {}
+
+  - it: should include postgres env vars
+    template: templates/init/migrate-database/020-Job.yaml
+    set:
+      modules.migrateDatabase.enabled: true
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_HOST
+            value: postgres.example.com

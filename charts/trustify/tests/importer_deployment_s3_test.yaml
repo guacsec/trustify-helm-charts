@@ -1,0 +1,31 @@
+suite: importer deployment S3 storage configuration
+templates:
+  - templates/services/importer/030-Deployment.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should include storage env vars for S3
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      database:
+        host: infrastructure-postgresql
+        name: trustify
+        username: trustify
+        password: trustify1234
+      storage:
+        type: s3
+        accessKey: AKIAIOSFODNN7EXAMPLE
+        secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        bucket: my-bucket
+        region: us-west-2
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_STORAGE_STRATEGY
+            value: s3
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_S3_BUCKET
+            value: my-bucket

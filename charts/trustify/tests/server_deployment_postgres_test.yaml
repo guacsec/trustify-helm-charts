@@ -1,0 +1,138 @@
+suite: server postgres database configuration
+templates:
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/server/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: should set TRUSTD_DB_HOST from value
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_HOST
+            value: postgres.example.com
+
+  - it: should set default port 5432
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PORT
+            value: "5432"
+
+  - it: should respect custom port
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database:
+        host: postgres.example.com
+        name: trustify
+        username: user
+        password: pass
+        port: "5433"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PORT
+            value: "5433"
+
+  - it: should set database name
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.name: trustify_db
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_NAME
+            value: trustify_db
+
+  - it: should set database user
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.username: dbuser
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_USER
+            value: dbuser
+
+  - it: should set database password
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.password: mypassword
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PASSWORD
+            value: mypassword
+
+  - it: should support secretKeyRef for password
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.password:
+        valueFrom:
+          secretKeyRef:
+            name: db-secret
+            key: password
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: password
+
+  - it: should support configMapKeyRef for host
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.host:
+        valueFrom:
+          configMapKeyRef:
+            name: db-config
+            key: hostname
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: db-config
+                key: hostname
+
+  - it: should set default sslmode to allow
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.host: postgres.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_SSLMODE
+            value: allow
+
+  - it: should respect custom sslmode
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      database.sslMode: require
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_SSLMODE
+            value: require
+
+
