@@ -3,7 +3,7 @@
 ## Language and Framework
 
 - Kubernetes Helm charts (YAML + Go templates)
-- Helm 3 (v3.13.3+ used in CI)
+- Helm 3 (v3.22.1 used in CI; **v3.20 is the minimum** — the values schema uses `urn:` refs that older Helm cannot resolve)
 - Two charts: `trustify` (main application) and `trustify-infrastructure` (supporting services like Keycloak)
 - Values schema defined in YAML (`values.schema.yaml`) and auto-generated to JSON (`values.schema.json`)
 

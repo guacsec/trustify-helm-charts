@@ -29,6 +29,43 @@ It is also possible to use `yq` for this:
 yq eval -o=json charts/trustify/values.schema.yaml > charts/trustify/values.schema.json
 ```
 
+### External schema references
+
+The values schema needs definitions owned by other projects: the trustify
+importer and auth configs, and four Kubernetes core types (`Volume`,
+`VolumeMount`, `Quantity`, `EnvVarSource`). These used to be `$ref`s to
+`raw.githubusercontent.com`. Helm resolves remote `$ref`s while validating
+values, so those URLs made `helm template`/`install` fail outright without
+network — an air-gapped install could not render the chart at all.
+
+They are now referenced by **`urn:`** instead:
+
+| URN | Replaces |
+| --- | --- |
+| `urn:trustify:importer` | `.../trustify/<ref>/modules/importer/schema/importer.json` |
+| `urn:trustify:auth` | `.../trustify/<ref>/common/auth/schema/auth.json` |
+| `urn:k8s:v1.29.0:Volume` etc. | `.../kubernetes-json-schema/.../_definitions.json#/definitions/io.k8s...` |
+
+Helm resolves the `urn:` scheme through the pluggable `chartutil.URNResolver`.
+**This repository registers nothing**, and an unresolved URN is deliberately
+not an error: Helm logs a warning and substitutes a permissive schema. So
+`helm install` of this chart renders offline, but the six subtrees above are
+*not validated* — that is the trade-off for working without network.
+
+A consumer that embeds the chart in a Go program can register the real schemas
+and get full offline validation back; the RHTPA operator does this from its
+`main.go` and keeps vendored copies of all six documents.
+
+Two constraints when editing these refs:
+
+- **A URN must not carry a JSON-pointer fragment.** The fallback for an
+  unresolved URN is a bare `true` schema, and `#/definitions/X` cannot resolve
+  against it, which turns graceful degradation into a hard failure. Any
+  Kubernetes type referenced this way has to be a whole self-contained
+  document, not a pointer into `_definitions.json`.
+- **This requires Helm >= 3.20.** Older Helm has no loader for the `urn:`
+  scheme and fails with `Reference urn:... must be canonical`.
+
 ## Linting Helm charts
 
 ```shell

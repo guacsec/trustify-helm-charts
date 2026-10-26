@@ -1,5 +1,16 @@
 # Deploying Trustify using Helm
 
+## Requirements
+
+**Helm 3.20 or newer.** The `trustify` chart's values schema refers to the
+trustify and Kubernetes schemas by `urn:`, a scheme only Helm 3.20+ can
+resolve. Older Helm fails with `Reference urn:... must be canonical`.
+
+In exchange the chart renders without network access, which the previous
+`https://` schema references made impossible. Those six subtrees are not
+validated unless the embedding program registers the schemas — see
+[DEVELOPING.md](DEVELOPING.md#external-schema-references).
+
 ## From a local checkout
 
 From a local copy of the repository, execute one of the following deployments.
