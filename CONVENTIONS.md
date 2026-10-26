@@ -6,6 +6,7 @@
 - Helm 3 (v3.22.1 used in CI; **v3.20 is the minimum** — the values schema uses `urn:` refs that older Helm cannot resolve)
 - Two charts: `trustify` (main application) and `trustify-infrastructure` (supporting services like Keycloak)
 - Values schema defined in YAML (`values.schema.yaml`) and auto-generated to JSON (`values.schema.json`)
+- The chart must stay identical to the copy shipped by the RHTPA operator — never inline anything repo-specific into the values schema. Schemas owned by other projects are referenced by `urn:` and validated in CI by `hack/schema-validator` (see [DEVELOPING.md](DEVELOPING.md#validating-the-values-files-in-ci))
 
 ## Code Style
 

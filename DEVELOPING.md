@@ -46,15 +46,51 @@ They are now referenced by **`urn:`** instead:
 | `urn:trustify:auth` | `.../trustify/<ref>/common/auth/schema/auth.json` |
 | `urn:k8s:v1.29.0:Volume` etc. | `.../kubernetes-json-schema/.../_definitions.json#/definitions/io.k8s...` |
 
-Helm resolves the `urn:` scheme through the pluggable `chartutil.URNResolver`.
-**This repository registers nothing**, and an unresolved URN is deliberately
-not an error: Helm logs a warning and substitutes a permissive schema. So
-`helm install` of this chart renders offline, but the six subtrees above are
-*not validated* — that is the trade-off for working without network.
+Helm resolves the `urn:` scheme through the pluggable `chartutil.URNResolver`,
+a Go variable with no CLI flag or environment variable behind it. An
+unresolved URN is deliberately not an error: Helm logs a warning and
+substitutes a permissive schema. So `helm install` of this chart renders
+offline, but the `helm` CLI does **not** validate the six subtrees above.
 
-A consumer that embeds the chart in a Go program can register the real schemas
-and get full offline validation back; the RHTPA operator does this from its
-`main.go` and keeps vendored copies of all six documents.
+Nothing is inlined into the chart to fix that, on purpose: the RHTPA operator
+ships its own copy of this chart and the two must stay identical, so the
+schema file cannot carry anything specific to either side. The `urn:` spelling
+is version-agnostic, which is what lets the two copies match even though they
+resolve different trustify releases — the operator registers its own vendored
+copies from `main.go`, and gets full offline validation that way.
+
+### Validating the values files in CI
+
+Since the CLI cannot check those subtrees, a small Go test does it instead:
+
+```shell
+cd hack/schema-validator && go test ./...
+```
+
+It registers the schemas vendored in `hack/schemas/` as Helm's URN resolver
+and validates every values-file combination the README documents —
+`values-minikube.yaml`, `values-ocp-no-aws.yaml`, `values-ocp-aws.yaml`,
+`values-ocp-no-aws.yaml + values-crc.yaml`, and each base plus
+`values-importers.yaml`. The importer cases are the ones that actually
+exercise `urn:trustify:importer`. **Add a case when you add a values file**,
+or it will not be covered.
+
+The suite also asserts that registering the schemas genuinely tightens
+validation, so the mechanism cannot go inert unnoticed, and that an
+unregistered URN still degrades to permissive rather than failing — the
+property a plain offline `helm install` depends on.
+
+Refreshing the vendored copies:
+
+```shell
+hack/vendor-values-schemas.py            # verify digests and chart refs
+hack/vendor-values-schemas.py --fetch    # re-download from upstream
+```
+
+Their URLs and SHA-256 digests live in `hack/schemas/SOURCES.json`; to bump a
+version, edit `upstream` there and run `--fetch`. The `--check` mode runs in
+CI and also fails if a remote `$ref` creeps back into the chart or a URN is
+referenced that nothing vendors.
 
 Two constraints when editing these refs:
 

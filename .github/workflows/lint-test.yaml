@@ -20,6 +20,27 @@ jobs:
             exit 1
           fi
 
+  # The chart refers to the trustify and Kubernetes schemas by `urn:`, which
+  # the helm CLI cannot resolve -- it falls back to a permissive schema, so
+  # `helm lint` silently does not check those subtrees. This job registers the
+  # vendored copies and validates the values files for real.
+  values-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Ensure vendored schemas are intact and the chart has no remote $refs
+        run: python3 hack/vendor-values-schemas.py --check
+
+      - name: Set up Go
+        uses: actions/setup-go@v5.2.0
+        with:
+          go-version-file: hack/schema-validator/go.mod
+
+      - name: Validate values files against the chart schema
+        working-directory: hack/schema-validator
+        run: go test ./...
+
   lint-test:
     runs-on: ubuntu-latest
     steps:
