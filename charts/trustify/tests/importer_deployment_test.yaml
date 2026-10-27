@@ -77,6 +77,41 @@ tests:
             name: no_proxy
           any: true
 
+  - it: should inject importer credential allowlists as comma-separated values
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.envPrefixes:
+        - QUAY_
+        - PULP_
+      modules.importer.credentialPaths:
+        - /run/secrets/quay-credentials
+        - /run/secrets/pulp-credentials
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: IMPORTER_ENV_PREFIXES
+            value: "QUAY_,PULP_"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: IMPORTER_CREDENTIAL_PATHS
+            value: "/run/secrets/quay-credentials,/run/secrets/pulp-credentials"
+
+  - it: should omit importer credential allowlists when empty by default
+    template: templates/services/importer/030-Deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: IMPORTER_ENV_PREFIXES
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: IMPORTER_CREDENTIAL_PATHS
+          any: true
+
   - it: should inject only HTTP_PROXY when only httpProxy is set
     template: templates/services/importer/030-Deployment.yaml
     set:

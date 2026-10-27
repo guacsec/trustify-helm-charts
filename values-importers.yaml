@@ -4,6 +4,13 @@ appDomain: asdf
 tracing: {}
 
 modules:
+  importer:
+    # Allows the QUAY_API_TOKEN reference shown below. Inject its value from a Kubernetes Secret.
+    envPrefixes:
+      - QUAY_
+    # Allows file references below this path; mount the credential file separately.
+    credentialPaths:
+      - /var/run/trustify/pulp-credentials
   createImporters:
     enabled: true
     importers:
@@ -55,10 +62,6 @@ modules:
           #       #         name: quay-api-token
           #       type: env
           #       value: QUAY_API_TOKEN
-          # Inline variant (dev only — stores secret in DB):
-          # auth:
-          #   method:
-          #     type: bearer
-          #     token:
-          #       type: inline
-          #       value: my-token-here
+          # For a file-backed source instead, use:
+          #       type: file
+          #       value: /var/run/trustify/pulp-credentials/token
