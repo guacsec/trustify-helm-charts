@@ -98,8 +98,11 @@ tests:
             name: IMPORTER_CREDENTIAL_PATHS
             value: "/run/secrets/quay-credentials,/run/secrets/pulp-credentials"
 
-  - it: should omit importer credential allowlists when empty by default
+  - it: should accept explicitly empty importer credential allowlists
     template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.envPrefixes: []
+      modules.importer.credentialPaths: []
     asserts:
       - notContains:
           path: spec.template.spec.containers[0].env
@@ -111,6 +114,24 @@ tests:
           content:
             name: IMPORTER_CREDENTIAL_PATHS
           any: true
+
+  - it: should reject an empty environment credential prefix
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.envPrefixes:
+        - ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "envPrefixes"
+
+  - it: should reject an empty file credential path
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.credentialPaths:
+        - ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "credentialPaths"
 
   - it: should inject only HTTP_PROXY when only httpProxy is set
     template: templates/services/importer/030-Deployment.yaml

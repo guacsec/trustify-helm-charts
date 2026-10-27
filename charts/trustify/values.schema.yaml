@@ -277,18 +277,20 @@ properties:
                 type: array
                 items:
                   type: string
+                  minLength: 1
                 default: []
                 description: |
-                  Prefixes allowed for environment-variable credential sources. Injected as
+                  Non-empty prefixes allowed for environment-variable credential sources. Injected as
                   IMPORTER_ENV_PREFIXES, comma-joined on the importer Deployment. When empty,
                   the importer denies all environment-variable credentials.
               credentialPaths:
                 type: array
                 items:
                   type: string
+                  minLength: 1
                 default: []
                 description: |
-                  Base paths allowed for file credential sources. Injected as
+                  Non-empty base paths allowed for file credential sources. Injected as
                   IMPORTER_CREDENTIAL_PATHS, comma-joined on the importer Deployment. When
                   empty, the importer denies all file credentials.
 
