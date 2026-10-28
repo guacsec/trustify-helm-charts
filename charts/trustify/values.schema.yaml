@@ -31,12 +31,12 @@ properties:
   extraVolumes:
     type: array
     items:
-      $ref: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json#/definitions/io.k8s.api.core.v1.Volume"
+      $ref: "urn:k8s:v1.29.0:Volume"
 
   extraVolumeMounts:
     type: array
     items:
-      $ref: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json#/definitions/io.k8s.api.core.v1.VolumeMount"
+      $ref: "urn:k8s:v1.29.0:VolumeMount"
 
   storage:
     $ref: "#/definitions/StorageConfig"
@@ -260,7 +260,7 @@ properties:
                   - size
                 properties:
                   size:
-                    $ref: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+                    $ref: "urn:k8s:v1.29.0:Quantity"
               concurrency:
                 type: integer
                 minimum: 1
@@ -319,7 +319,7 @@ properties:
                 type: object
                 description: The importers to create
                 additionalProperties:
-                  $ref: "https://raw.githubusercontent.com/guacsec/trustify/main/modules/importer/schema/importer.json"
+                  $ref: "urn:trustify:importer"
 
   database:
     $ref: "#/definitions/PostgresConfig"
@@ -618,7 +618,7 @@ definitions:
           - content
         properties:
           content:
-            $ref: "https://raw.githubusercontent.com/guacsec/trustify/main/common/auth/schema/auth.json"
+            $ref: "urn:trustify:auth"
       - type: object
         additionalProperties: false
         required:
@@ -729,7 +729,7 @@ definitions:
           - valueFrom
         properties:
           valueFrom:
-            $ref: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json#/definitions/io.k8s.api.core.v1.EnvVarSource"
+            $ref: "urn:k8s:v1.29.0:EnvVarSource"
 
       - type: object
         additionalProperties: false
@@ -808,7 +808,7 @@ definitions:
         enum:
           - filesystem
       size:
-        $ref: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+        $ref: "urn:k8s:v1.29.0:Quantity"
       storageClassName:
         type: string
       compression:

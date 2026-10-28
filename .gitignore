@@ -1,3 +1,4 @@
 /.idea
 /.serena
 charts/*/tests/__snapshot__/
+__pycache__/
