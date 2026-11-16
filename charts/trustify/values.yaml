@@ -72,6 +72,8 @@ modules:
         cpu: 1
         memory: 8Gi
     concurrency: 1
+    envPrefixes: []
+    credentialPaths: []
     # readOnly: false
     workingDirectory:
       size: 32Gi
