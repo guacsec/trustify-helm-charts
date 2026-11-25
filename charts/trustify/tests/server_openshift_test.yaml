@@ -1,0 +1,38 @@
+suite: OpenShift server trust
+templates:
+  - templates/services/server/030-Deployment.yaml
+  - templates/services/server/020-ConfigMap-auth.yaml
+values:
+  - ../../../values-minikube.yaml
+tests:
+  - it: uses the service CA when OpenShift is explicitly enabled for offline rendering
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLIENT_TLS_CA_CERTIFICATES
+            value: /run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - it: omits the service CA when disabled on OpenShift
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: true
+      openshift.useServiceCa: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLIENT_TLS_CA_CERTIFICATES
+            value: /run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - it: omits the service CA outside OpenShift
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      openshift.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLIENT_TLS_CA_CERTIFICATES
+            value: /run/secrets/kubernetes.io/serviceaccount/service-ca.crt

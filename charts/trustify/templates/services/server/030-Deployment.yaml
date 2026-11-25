@@ -89,7 +89,7 @@ spec:
               value: {{ join "," . | quote }}
             {{- end }}
 
-            {{- if eq ( include "trustification.openshift.useServiceCa" .root ) "true" }}
+            {{- if eq ( include "trustification.openshift.useServiceCa" . ) "true" }}
             - name: CLIENT_TLS_CA_CERTIFICATES
               value: /run/secrets/kubernetes.io/serviceaccount/service-ca.crt
             {{- end }}
