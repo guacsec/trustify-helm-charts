@@ -661,41 +661,26 @@
     },
     "ImageConfig": {
       "description": "Configuration for the source of the container image. This can either be the full name of the image, or a\ncombination or registry, name, and version.\n",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "fullName"
-          ],
-          "properties": {
-            "fullName": {
-              "type": "string"
-            },
-            "pullPolicy": {
-              "$ref": "#/definitions/ImagePullPolicy"
-            }
-          }
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Complete image reference, including an optional digest. Takes precedence over\nregistry, name, and version, including fields inherited from chart defaults.\n"
         },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "registry": {
-              "type": "string"
-            },
-            "pullPolicy": {
-              "$ref": "#/definitions/ImagePullPolicy"
-            },
-            "version": {
-              "type": "string"
-            }
-          }
+        "name": {
+          "type": "string"
+        },
+        "registry": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "$ref": "#/definitions/ImagePullPolicy"
+        },
+        "version": {
+          "type": "string"
         }
-      ]
+      }
     },
     "ImagePullPolicy": {
       "type": "string",
