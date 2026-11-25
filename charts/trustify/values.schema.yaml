@@ -534,27 +534,22 @@ definitions:
     description: |
       Configuration for the source of the container image. This can either be the full name of the image, or a
       combination or registry, name, and version.
-    oneOf:
-      - type: object
-        additionalProperties: false
-        required:
-          - fullName
-        properties:
-          fullName:
-            type: string
-          pullPolicy:
-            $ref: "#/definitions/ImagePullPolicy"
-      - type: object
-        additionalProperties: false
-        properties:
-          name:
-            type: string
-          registry:
-            type: string
-          pullPolicy:
-            $ref: "#/definitions/ImagePullPolicy"
-          version:
-            type: string
+    type: object
+    additionalProperties: false
+    properties:
+      fullName:
+        type: string
+        description: |
+          Complete image reference, including an optional digest. Takes precedence over
+          registry, name, and version, including fields inherited from chart defaults.
+      name:
+        type: string
+      registry:
+        type: string
+      pullPolicy:
+        $ref: "#/definitions/ImagePullPolicy"
+      version:
+        type: string
 
   ImagePullPolicy:
     type: string

@@ -1,0 +1,25 @@
+suite: server image references
+templates:
+  - templates/services/server/030-Deployment.yaml
+  - templates/services/server/020-ConfigMap-auth.yaml
+values:
+  - ../../../values-minikube.yaml
+tests:
+  - it: accepts a full digest reference merged with the chart image defaults
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      image.fullName: ghcr.io/guacsec/trustd@sha256:267909474bb68d40a6aca66b7e6f1c93939516a4db33428be45a4d167088347d
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/guacsec/trustd@sha256:267909474bb68d40a6aca66b7e6f1c93939516a4db33428be45a4d167088347d
+  - it: continues to support split image references
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      image.registry: example.com
+      image.name: custom-trustd
+      image.version: development
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.com/custom-trustd:development
