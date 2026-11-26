@@ -1,0 +1,281 @@
+name: E2E Minikube
+
+# Installs the two charts on a real cluster, exactly the way README.md tells
+# people to install them on minikube, and asserts that the result comes up.
+#
+# `lint-test.yaml` renders and lints the charts; it cannot tell whether what
+# they render actually runs. This can: a hook ordering mistake, a wrong service
+# port, a broken issuer URL or an image that is not pullable all show up here
+# and nowhere else.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+  push:
+    branches:
+      - main
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      appImage:
+        description: Application image to deploy
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E Minikube Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NAMESPACE: trustify
+      # Empty unless dispatched with one: the chart's own default
+      # (ghcr.io/guacsec/trustd at the chart's appVersion) is public and is
+      # what we want to test.
+      APP_IMAGE: ${{ inputs.appImage }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@v0.0.21
+        with:
+          minikube-version: 1.38.1
+          kubernetes-version: stable
+          driver: docker
+          cpus: 4
+          memory: 8192
+          addons: ingress
+
+      - name: Set up Helm
+        # 3.20 is the chart's minimum -- the values schema uses `urn:` refs.
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.22.1
+
+      # The charts create Ingress objects, and ingress-nginx rejects those
+      # until its admission webhook is serving. The addon being "enabled" is
+      # not the same as the controller being ready, and installing in between
+      # fails with `dial tcp ...:443: connect: connection refused`.
+      - name: Wait for the ingress controller
+        run: |
+          kubectl -n ingress-nginx wait --for=condition=ready pod \
+            -l app.kubernetes.io/component=controller --timeout=300s
+
+      - name: Resolve the application domain
+        run: |
+          echo "APP_DOMAIN=.$(minikube ip).nip.io" >> "$GITHUB_ENV"
+
+      - name: Create the namespace
+        run: kubectl create namespace "${NAMESPACE}"
+
+      # README.md, "Minikube". The e2e overlay only shrinks the resource
+      # requests to fit a runner; see values-e2e-minikube.yaml.
+      - name: Install the infrastructure chart
+        run: |
+          helm upgrade --install --dependency-update -n "${NAMESPACE}" infrastructure \
+            charts/trustify-infrastructure \
+            --values values-minikube.yaml \
+            --values values-e2e-minikube.yaml \
+            --set-string keycloak.ingress.hostname="sso${APP_DOMAIN}" \
+            --set-string appDomain="${APP_DOMAIN}" \
+            --wait --timeout 15m
+
+      # The post-install hook creates the `trustify` realm, clients and roles
+      # the server authenticates against. --wait does not cover post-install
+      # hooks, so wait for it explicitly before the server needs the issuer.
+      - name: Wait for the Keycloak realm setup
+        run: |
+          kubectl -n "${NAMESPACE}" wait --for=condition=complete \
+            job/post-install-keycloak --timeout=600s
+
+      # WORKAROUND, not part of the documented install.
+      #
+      # `migrate-db` is a pre-install hook and mounts the `storage` PVC, but
+      # the chart renders that PVC as an ordinary resource, which Helm creates
+      # only *after* its pre-install hooks have completed. On a cluster where
+      # the PVC does not exist yet the hook pod is unschedulable
+      # (`persistentvolumeclaim "storage" not found`) and the install blocks
+      # until it times out -- so a greenfield `helm install` of this chart with
+      # `storage.type: filesystem` cannot succeed, on minikube or anywhere
+      # else.
+      #
+      # Creating the PVC up front breaks the cycle. It is rendered from the
+      # chart so it stays in step with it, and carries the release ownership
+      # metadata so Helm adopts it instead of refusing with
+      # `invalid ownership metadata`.
+      #
+      # Delete this step once the chart creates the PVC before the hook that
+      # needs it; the step after it is then the whole install.
+      - name: Pre-create the storage PVC
+        run: |
+          helm template trustify charts/trustify \
+            --values values-minikube.yaml \
+            --values values-e2e-minikube.yaml \
+            --set-string appDomain="${APP_DOMAIN}" \
+            -s templates/services/server/010-PersistentVolumeClaim-storage.yaml \
+            | kubectl -n "${NAMESPACE}" apply -f -
+          kubectl -n "${NAMESPACE}" annotate pvc storage \
+            "meta.helm.sh/release-name=trustify" \
+            "meta.helm.sh/release-namespace=${NAMESPACE}" --overwrite
+
+      - name: Install the trustify chart
+        run: |
+          # Only set when dispatched with an image; otherwise the chart's own
+          # default is what gets tested.
+          image_override=()
+          if [ -n "${APP_IMAGE}" ]; then
+            image_override=(--set-string "image.fullName=${APP_IMAGE}")
+          fi
+
+          helm upgrade --install -n "${NAMESPACE}" trustify charts/trustify \
+            --values values-minikube.yaml \
+            --values values-e2e-minikube.yaml \
+            --set-string appDomain="${APP_DOMAIN}" \
+            "${image_override[@]}" \
+            --wait --timeout 20m
+
+      - name: Verify the deployed resources
+        run: |
+          set -euo pipefail
+
+          echo "=== Releases ==="
+          helm -n "${NAMESPACE}" list
+
+          echo "=== Database init jobs ==="
+          # pre-install hooks: the chart is broken if these did not complete,
+          # even though --wait already returned.
+          for job in create-db migrate-db; do
+            kubectl -n "${NAMESPACE}" get "job/${job}"
+            succeeded=$(kubectl -n "${NAMESPACE}" get "job/${job}" -o jsonpath='{.status.succeeded}')
+            if [ "${succeeded}" != "1" ]; then
+              echo "ERROR: job/${job} did not succeed (succeeded=${succeeded:-0})"
+              exit 1
+            fi
+          done
+
+          echo "=== Deployments ==="
+          for deployment in server importer; do
+            kubectl -n "${NAMESPACE}" rollout status "deployment/${deployment}" --timeout=60s
+            available=$(kubectl -n "${NAMESPACE}" get "deployment/${deployment}" -o jsonpath='{.status.availableReplicas}')
+            if [ "${available:-0}" -lt 1 ]; then
+              echo "ERROR: deployment/${deployment} has no available replicas"
+              exit 1
+            fi
+          done
+
+          echo "=== Service, ConfigMap, PVC, Ingress ==="
+          kubectl -n "${NAMESPACE}" get service server
+          kubectl -n "${NAMESPACE}" get configmap server-auth
+          kubectl -n "${NAMESPACE}" get pvc storage
+          kubectl -n "${NAMESPACE}" get ingress server
+
+          echo "=== Restart counts ==="
+          # A crash-looping pod can still report Available once it settles.
+          # Only the long-running workloads: the init jobs legitimately retry
+          # in place (restartPolicy: OnFailure) while they wait for the
+          # database, and that is not a failure.
+          restarts=$(kubectl -n "${NAMESPACE}" get pods \
+            -l 'app.kubernetes.io/instance=trustify,app.kubernetes.io/component in (server,importer)' \
+            -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.containerStatuses[*].restartCount}{"\n"}{end}')
+          echo "${restarts}"
+          if echo "${restarts}" | awk -F'\t' 'NF > 1 { n = split($2, c, " "); for (i = 1; i <= n; i++) if (c[i] > 0) exit 1 }'; then
+            echo "No restarts"
+          else
+            echo "ERROR: a workload pod restarted on a fresh install"
+            exit 1
+          fi
+
+      # The real end-to-end assertion: the server answers over the ingress the
+      # chart created, on the hostname the chart derived from appDomain. This
+      # covers the Ingress, the Service port and the server's own listener --
+      # none of which `helm lint` can see.
+      - name: Smoke-test the server over the ingress
+        run: |
+          set -euo pipefail
+          url="http://server${APP_DOMAIN}/"
+          for attempt in $(seq 1 30); do
+            code=$(curl -ksS -o /dev/null -w '%{http_code}' --max-time 10 "${url}" || true)
+            if [ "${code}" = "200" ]; then
+              echo "${url} -> 200"
+              exit 0
+            fi
+            echo "attempt ${attempt}: ${url} -> ${code:-no response}"
+            sleep 5
+          done
+          echo "ERROR: ${url} never answered 200"
+          exit 1
+
+      # The chart derives the issuer URL it hands the server from appDomain
+      # (`trustification.oidc.issuerUrl`: https?://sso<appDomain>/realms/trustify)
+      # and relies on the infrastructure chart's post-install hook having
+      # created that realm. Resolve exactly that URL: it ties the two charts'
+      # ideas of the issuer together, which is the join most likely to drift.
+      - name: Verify the OIDC issuer the chart configured is reachable
+        run: |
+          set -euo pipefail
+          url="http://sso${APP_DOMAIN}/realms/trustify/.well-known/openid-configuration"
+          for attempt in $(seq 1 30); do
+            code=$(curl -ksS -o /tmp/oidc.json -w '%{http_code}' --max-time 10 "${url}" || true)
+            if [ "${code}" = "200" ]; then
+              echo "${url} -> 200"
+              grep -q '"issuer"' /tmp/oidc.json
+              exit 0
+            fi
+            echo "attempt ${attempt}: ${url} -> ${code:-no response}"
+            sleep 5
+          done
+          echo "ERROR: ${url} never answered 200"
+          exit 1
+
+      - name: Collect diagnostics
+        if: failure()
+        run: |
+          echo "=== Releases ==="
+          helm -n "${NAMESPACE}" list --all || true
+
+          echo "=== All resources ==="
+          kubectl -n "${NAMESPACE}" get all || true
+
+          echo "=== Pods ==="
+          kubectl -n "${NAMESPACE}" get pods -o wide || true
+          kubectl -n "${NAMESPACE}" describe pods || true
+
+          echo "=== PVCs ==="
+          kubectl -n "${NAMESPACE}" get pvc || true
+          kubectl -n "${NAMESPACE}" describe pvc || true
+
+          echo "=== Ingresses ==="
+          kubectl -n "${NAMESPACE}" get ingress -o yaml || true
+
+          for job in create-db migrate-db post-install-keycloak; do
+            echo "=== Job ${job} ==="
+            kubectl -n "${NAMESPACE}" describe "job/${job}" || true
+            kubectl -n "${NAMESPACE}" logs "job/${job}" --tail=100 || true
+          done
+
+          for deployment in server importer; do
+            echo "=== Deployment ${deployment} ==="
+            kubectl -n "${NAMESPACE}" describe "deployment/${deployment}" || true
+            kubectl -n "${NAMESPACE}" logs "deployment/${deployment}" --all-containers --tail=200 || true
+          done
+
+          echo "=== Keycloak ==="
+          kubectl -n "${NAMESPACE}" logs statefulset/infrastructure-keycloak --tail=100 || true
+
+          echo "=== PostgreSQL ==="
+          kubectl -n "${NAMESPACE}" logs statefulset/infrastructure-postgresql --tail=100 || true
+
+          echo "=== Ingress controller ==="
+          kubectl -n ingress-nginx logs deployment/ingress-nginx-controller --tail=100 || true
+
+          echo "=== Events ==="
+          kubectl -n "${NAMESPACE}" get events --sort-by='.lastTimestamp' || true
+
+          echo "=== Nodes ==="
+          kubectl describe nodes || true

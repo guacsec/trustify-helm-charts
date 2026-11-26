@@ -1,0 +1,36 @@
+# CI-sized overlay for the documented minikube install.
+#
+# Layer it *after* values-minikube.yaml, for both charts:
+#
+#   helm ... --values values-minikube.yaml --values values-e2e-minikube.yaml
+#
+# values-minikube.yaml targets a workstation cluster (`minikube start --cpus 8
+# --memory 24576`, see README.md). A GitHub Actions runner has 4 vCPU and 16 GB
+# in total, and the chart defaults ask for 1 CPU + 8 GiB for the server and the
+# same again for the importer, so both pods would stay Pending forever. Nothing
+# here changes behaviour -- only the size of the box it has to fit in.
+
+storage:
+  size: 1Gi
+
+modules:
+  server:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+  importer:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+    workingDirectory:
+      size: 1Gi
+
+# The infrastructure chart's PostgreSQL is pulled in by Keycloak and defaults to
+# the "nano" preset (100m / 128Mi). It serves the trustify database as well
+# here, and the schema migration is heavier than Keycloak's own use of it.
+keycloak:
+  postgresql:
+    primary:
+      resourcesPreset: small
