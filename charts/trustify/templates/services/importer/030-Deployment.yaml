@@ -39,6 +39,9 @@ spec:
             - {{ $mod.module.concurrency | default 1 | quote }}
 
           env:
+            {{- with $mod.module.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
             - name: NAMESPACE
               valueFrom:

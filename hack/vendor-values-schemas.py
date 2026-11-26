@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Maintain the vendored copies of the schemas the chart references by `urn:`.
 
-charts/trustify/values.schema.yaml refers to six schemas owned by other
-projects -- the trustify importer and auth configs, and four Kubernetes core
+charts/trustify/values.schema.yaml refers to seven schemas owned by other
+projects -- the trustify importer and auth configs, and five Kubernetes core
 types -- as `urn:trustify:importer`, `urn:k8s:v1.29.0:Volume` and so on.
 
 The chart is *not* modified by this script, and nothing is inlined into it.

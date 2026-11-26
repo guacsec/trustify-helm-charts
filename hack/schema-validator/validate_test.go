@@ -103,6 +103,7 @@ func TestRegisteredURNs(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	want := []string{
+		"urn:k8s:v1.29.0:EnvVar",
 		"urn:k8s:v1.29.0:EnvVarSource",
 		"urn:k8s:v1.29.0:Quantity",
 		"urn:k8s:v1.29.0:Volume",
@@ -201,6 +202,34 @@ func TestKubernetesSchemasAreEnforced(t *testing.T) {
 	}
 	if err := validate(t, values); err == nil {
 		t.Fatal("volume with a non-string name accepted: urn:k8s:v1.29.0:Volume was not enforced")
+	}
+}
+
+// EnvVar and its nested sources must be checked through the Kubernetes schema.
+func TestExtraEnvUsesKubernetesSchema(t *testing.T) {
+	registerOrFail(t)
+	for _, module := range []string{"server", "importer"} {
+		t.Run(module, func(t *testing.T) {
+			for _, tc := range []struct {
+				name  string
+				entry map[string]any
+				valid bool
+			}{
+				{"literal", map[string]any{"name": "SETTING", "value": "4"}, true},
+				{"source", map[string]any{"name": "SETTING", "valueFrom": map[string]any{"configMapKeyRef": map[string]any{"name": "settings", "key": "setting"}}}, true},
+				{"missing name", map[string]any{"value": "4"}, false},
+				{"numeric value", map[string]any{"name": "SETTING", "value": 4}, false},
+				{"invalid source", map[string]any{"name": "SETTING", "valueFrom": map[string]any{"configMapKeyRef": map[string]any{"name": "settings", "key": 4}}}, false},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					values := readValues(t, []string{"values-minikube.yaml"})
+					values["modules"] = map[string]any{module: map[string]any{"extraEnv": []any{tc.entry}}}
+					if err := validate(t, values); (err == nil) != tc.valid {
+						t.Errorf("valid=%v, validation error: %v", tc.valid, err)
+					}
+				})
+			}
+		})
 	}
 }
 

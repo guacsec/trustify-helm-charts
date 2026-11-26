@@ -2,7 +2,7 @@
 // schema refers to by `urn:`, so this repository's values files can be
 // validated in CI.
 //
-// The chart refers to the trustify importer and auth configs, and four
+// The chart refers to the trustify importer and auth configs, and five
 // Kubernetes core types, as `urn:` rather than over the network -- remote
 // `$ref`s made `helm template`/`install` fail outright in an air-gapped
 // cluster. Helm resolves that scheme through the pluggable
@@ -10,7 +10,7 @@
 // Helm logs a warning and substitutes a permissive schema. That is what keeps
 // a plain `helm install` of this chart working offline.
 //
-// The cost is that the helm CLI never validates those six subtrees, because
+// The cost is that the helm CLI never validates those seven subtrees, because
 // nothing registers a resolver for it. This package closes that gap for CI
 // only: it plugs in the copies vendored under hack/schemas so the values
 // files in this repository are checked against the real schemas. The chart is

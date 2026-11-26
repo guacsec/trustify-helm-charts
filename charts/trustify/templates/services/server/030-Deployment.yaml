@@ -40,6 +40,9 @@ spec:
             - "/etc/config/auth.yaml"
 
           env:
+            {{- with $mod.module.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
             - name: NAMESPACE
               valueFrom:

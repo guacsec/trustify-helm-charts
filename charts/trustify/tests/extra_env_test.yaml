@@ -1,0 +1,83 @@
+suite: additional module environment variables
+templates:
+  - templates/services/server/030-Deployment.yaml
+  - templates/services/server/020-ConfigMap-auth.yaml
+  - templates/services/importer/030-Deployment.yaml
+values:
+  - ../values.yaml
+  - ../../../values-minikube.yaml
+tests:
+  - it: passes correlation settings only to the server
+    template: templates/services/server/030-Deployment.yaml
+    set:
+      modules.server.extraEnv:
+        - name: TRUSTD_CORRELATION_WORKERS
+          value: "4"
+        - name: TRUSTD_CORRELATION_WORK_MEM
+          value: "256MiB"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_CORRELATION_WORKERS
+            value: "4"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_CORRELATION_WORK_MEM
+            value: "256MiB"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_CORRELATION_WORKERS
+          any: true
+        template: templates/services/importer/030-Deployment.yaml
+
+  - it: preserves Kubernetes valueFrom sources for the importer
+    template: templates/services/importer/030-Deployment.yaml
+    set:
+      modules.importer.extraEnv:
+        - name: SECRET_SETTING
+          valueFrom:
+            secretKeyRef:
+              name: importer-settings
+              key: secret
+        - name: CONFIG_SETTING
+          valueFrom:
+            configMapKeyRef:
+              name: importer-settings
+              key: config
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SECRET_SETTING
+            valueFrom:
+              secretKeyRef:
+                name: importer-settings
+                key: secret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CONFIG_SETTING
+            valueFrom:
+              configMapKeyRef:
+                name: importer-settings
+                key: config
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SECRET_SETTING
+          any: true
+        template: templates/services/server/030-Deployment.yaml
