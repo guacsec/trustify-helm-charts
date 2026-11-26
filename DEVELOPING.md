@@ -4,6 +4,27 @@
 
 **NOTE:** All commands are relative to this file.
 
+## Database initialization jobs
+
+The `createDatabase` and `createImporters` modules use the application image,
+inheriting the top-level `image` settings. The image must provide
+`trustd db provision` and `trustd db importers`; older images and PostgreSQL-only
+images cannot run these jobs. Remove any existing module image overrides that
+select a PostgreSQL image when upgrading. No PostgreSQL client installation is
+required.
+
+`createDatabase` connects using the merged `createDatabase` and `database`
+settings, then provisions the database and login specified by `database`.
+Passwords remain environment variables with support for Secret references.
+Provisioning preserves existing databases and roles, updates the application
+password, and grants the same access as the former SQL script. Run migrations
+under the same administrator role to apply its default table privileges.
+
+`createImporters` mounts a generated JSON ConfigMap and upserts its entries
+atomically after migrations. Its database overrides and hook ordering are
+unchanged. Importer names and configuration values are passed as query
+parameters, including values containing apostrophes.
+
 ## Updating chart dependencies
 
 ```shell

@@ -34,9 +34,6 @@ spec:
       {{- include "trustification.application.pod" $mod | nindent 6 }}
 
       volumes:
-        - name: init-data
-          configMap:
-            name: {{ include "trustification.common.name" $mod }}
         {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
 
       containers:
@@ -46,33 +43,22 @@ spec:
 
           env:
             # connect using the `createDatabase` settings
-            {{- include "trustification.psql.envVars" ( dict "root" . "database" ( merge ( required "Using createDatabase requires setting .Values.createDatabase" (deepCopy .Values.createDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
+            {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( required "Using createDatabase requires setting .Values.createDatabase" (deepCopy .Values.createDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
 
             # create a user with the `database` settings
-            - name: DB_NAME
+            - name: TRUSTD_DB_PROVISION_NAME
               {{- include "trustification.common.envVarValue" .Values.database.name | nindent 14 }}
-            - name: DB_USERNAME
+            - name: TRUSTD_DB_PROVISION_USER
               {{- include "trustification.common.envVarValue" .Values.database.username | nindent 14 }}
-            - name: DB_PASSWORD
+            - name: TRUSTD_DB_PROVISION_PASSWORD
               {{- include "trustification.common.envVarValue" .Values.database.password | nindent 14 }}
 
           volumeMounts:
-            - mountPath: /etc/init-data
-              name: init-data
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
 
           command:
-            - psql
-            - --echo-all
-            - -v
-            - ON_ERROR_STOP=1
-            - -v
-            - db_name=$(DB_NAME)
-            - -v
-            - db_user=$(DB_USERNAME)
-            - -v
-            - db_password=$(DB_PASSWORD)
-            - -f
-            - /etc/init-data/init.sql
+            - trustd
+            - db
+            - provision
 
 {{- end }}

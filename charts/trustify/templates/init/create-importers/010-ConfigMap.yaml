@@ -1,0 +1,21 @@
+{{- if .Values.modules.createImporters.enabled }}
+{{- $mod := dict "root" . "name" "create-importers" "component" "database" "module" .Values.modules.createImporters -}}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "trustification.common.name" $mod }}
+  labels:
+    {{- include "trustification.common.labels" $mod | nindent 4 }}
+  annotations:
+    {{- include "trustification.application.annotations" $mod | nindent 4 }}
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "4"
+    helm.sh/hook-weight: "35"
+    helm.sh/hook: "post-install,pre-upgrade"
+    helm.sh/hook-delete-policy: before-hook-creation
+
+data:
+  importers.json: |
+    {{- .Values.modules.createImporters.importers | toPrettyJson | nindent 4 }}
+{{- end }}

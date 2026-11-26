@@ -34,6 +34,9 @@ spec:
       {{- include "trustification.application.pod" $mod | nindent 6 }}
 
       volumes:
+        - name: init-data
+          configMap:
+            name: {{ include "trustification.common.name" $mod }}
         {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
 
       containers:
@@ -42,27 +45,19 @@ spec:
           {{- include "trustification.application.container" $mod | nindent 10 }}
 
           env:
-            {{- include "trustification.psql.envVars" ( dict "root" . "database" ( merge ( deepCopy (.Values.modules.createImporters.database | default dict ) ) (deepCopy .Values.database) ) ) | nindent 12 }}
+            {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( deepCopy (.Values.modules.createImporters.database | default dict ) ) (deepCopy .Values.database) ) ) | nindent 12 }}
 
           volumeMounts:
+            - mountPath: /etc/init-data
+              name: init-data
+              readOnly: true
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
 
           command:
-            - psql
-            - -v
-            - ON_ERROR_STOP=1
-            - -c
-            - |
-              {{ range $key, $value := .Values.modules.createImporters.importers }}
-              INSERT INTO IMPORTER
-                (name, revision, state, last_change, configuration)
-              VALUES
-                ({{ $key | squote }}, gen_random_uuid(), 0, now(), '{{ $value | toJson }}'::jsonb)
-              ON CONFLICT (name) DO UPDATE
-              SET
-                revision=EXCLUDED.revision,
-                configuration=EXCLUDED.configuration
-              ;
-              {{ end }}
+            - trustd
+            - db
+            - importers
+            - --file
+            - /etc/init-data/importers.json
 
 {{- end }}

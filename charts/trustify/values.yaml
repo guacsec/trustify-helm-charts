@@ -82,10 +82,7 @@ modules:
 
   createDatabase:
     enabled: false
-    image:
-      name: postgres
-      registry: docker.io/library
-      version: "17.2"
+    image: {}
 
   migrateDatabase:
     enabled: false
@@ -96,8 +93,5 @@ modules:
 
   createImporters:
     enabled: false
-    image:
-      name: postgres
-      registry: docker.io/library
-      version: "17.2"
+    image: {}
     importers: {}
