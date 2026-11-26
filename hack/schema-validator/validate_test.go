@@ -38,6 +38,9 @@ var cases = []struct {
 	// This is the case that actually exercises urn:trustify:importer.
 	{"minikube+importers", []string{"values-minikube.yaml", "values-importers.yaml"}},
 	{"ocp-no-aws+importers", []string{"values-ocp-no-aws.yaml", "values-importers.yaml"}},
+	// The overlay the E2E Minikube workflow installs with. Also an overlay:
+	// it only resizes what values-minikube.yaml already sets.
+	{"minikube+e2e", []string{"values-minikube.yaml", "values-e2e-minikube.yaml"}},
 }
 
 func registerOrFail(t *testing.T) {
