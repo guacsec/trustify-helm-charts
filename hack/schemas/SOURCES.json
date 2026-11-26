@@ -11,6 +11,11 @@
       "sha256": "531c9742d2f5936aa1b5f1294e387ef7f6a9d7a0520aab9019863d1d8d98e6d5",
       "urn": "urn:trustify:importer"
     },
+    "k8s-EnvVar.json": {
+      "origin": "extracted",
+      "sha256": "3e1b20df7779c8bcb7645ff55f55ffe932972ad2d3d9f55bb49e981e3b38e448",
+      "urn": "urn:k8s:v1.29.0:EnvVar"
+    },
     "k8s-EnvVarSource.json": {
       "origin": "extracted",
       "sha256": "4f8d7e6648ba69345cca5b6efaad78944abf0e550ecff26d447d615d67cd7bcf",
@@ -35,6 +40,7 @@
   "upstream": {
     "kubernetes": {
       "files": {
+        "k8s-EnvVar.json": "io.k8s.api.core.v1.EnvVar",
         "k8s-EnvVarSource.json": "io.k8s.api.core.v1.EnvVarSource",
         "k8s-Quantity.json": "io.k8s.apimachinery.pkg.api.resource.Quantity",
         "k8s-Volume.json": "io.k8s.api.core.v1.Volume",

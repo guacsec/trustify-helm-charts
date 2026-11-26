@@ -235,6 +235,9 @@
               "$ref": "#/definitions/HttpApplication"
             },
             {
+              "$ref": "#/definitions/ExtraEnv"
+            },
+            {
               "$ref": "#/definitions/Postgres"
             },
             {
@@ -272,6 +275,9 @@
           "allOf": [
             {
               "$ref": "#/definitions/Feature"
+            },
+            {
+              "$ref": "#/definitions/ExtraEnv"
             },
             {
               "$ref": "#/definitions/Image"
@@ -534,6 +540,19 @@
           }
         }
       ]
+    },
+    "ExtraEnv": {
+      "type": "object",
+      "properties": {
+        "extraEnv": {
+          "type": "array",
+          "default": [],
+          "description": "Additional environment variables for this module's container. Supports literal\nstring values and Kubernetes valueFrom sources. Do not repeat names generated\nby the chart; configure those through their dedicated values instead.\n",
+          "items": {
+            "$ref": "urn:k8s:v1.29.0:EnvVar"
+          }
+        }
+      }
     },
     "Application": {
       "type": "object",

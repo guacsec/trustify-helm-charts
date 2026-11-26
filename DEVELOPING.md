@@ -32,8 +32,8 @@ yq eval -o=json charts/trustify/values.schema.yaml > charts/trustify/values.sche
 ### External schema references
 
 The values schema needs definitions owned by other projects: the trustify
-importer and auth configs, and four Kubernetes core types (`Volume`,
-`VolumeMount`, `Quantity`, `EnvVarSource`). These used to be `$ref`s to
+importer and auth configs, and five Kubernetes core types (`Volume`,
+`VolumeMount`, `Quantity`, `EnvVar`, `EnvVarSource`). These used to be `$ref`s to
 `raw.githubusercontent.com`. Helm resolves remote `$ref`s while validating
 values, so those URLs made `helm template`/`install` fail outright without
 network — an air-gapped install could not render the chart at all.
@@ -50,7 +50,7 @@ Helm resolves the `urn:` scheme through the pluggable `chartutil.URNResolver`,
 a Go variable with no CLI flag or environment variable behind it. An
 unresolved URN is deliberately not an error: Helm logs a warning and
 substitutes a permissive schema. So `helm install` of this chart renders
-offline, but the `helm` CLI does **not** validate the six subtrees above.
+offline, but the `helm` CLI does **not** validate the seven subtrees above.
 
 Nothing is inlined into the chart to fix that, on purpose: the RHTPA operator
 ships its own copy of this chart and the two must stay identical, so the
