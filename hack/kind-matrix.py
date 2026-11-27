@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Resolve published image aliases once, including a shared digest for latest."""
+"""Build the image/version matrix for the Kind chart installation tests.
+
+Run from the repository root: python3 hack/kind-matrix.py
+Requires authenticated GitHub CLI access and Docker with the buildx plugin.
+
+Read the backend's published stable releases and select the two highest minor
+release lines numerically, ignoring drafts and prereleases. Resolve their .z
+image aliases and latest to immutable manifest digests. Test all three with psql
+initialization, plus the same latest digest with trustd initialization, so the
+two modes cannot accidentally test different application builds.
+
+Print the matrix as JSON. In GitHub Actions, also set the matrix step output and
+write the selected tags, modes, and digests to the job summary. Fail if fewer
+than two stable release lines exist or an image digest cannot be resolved.
+"""
 
 import json
 import os

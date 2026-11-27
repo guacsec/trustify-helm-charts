@@ -1,3 +1,10 @@
+"""Check release ordering and matrix construction without GitHub or Docker.
+
+Run from the repository root: python3 -m unittest discover -s hack/tests
+Image resolution is stubbed so the tests also verify that both latest cases
+reuse the same resolved image and missing release history fails explicitly.
+"""
+
 import importlib.util
 from pathlib import Path
 import unittest

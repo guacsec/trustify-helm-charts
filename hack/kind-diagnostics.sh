@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-# Deliberately avoid Secrets, Helm values, and infrastructure manifests.
+# Collect troubleshooting artifacts before the Kind test cluster is deleted.
+# Usage from the repository root: bash hack/kind-diagnostics.sh
+# Requires kubectl and Helm, with Helm targeting the kind-chart-testing cluster.
+# CI runs this after installation/tests even when an earlier step fails.
+#
+# Write workload/resource state, events, pod descriptions, Helm release status,
+# application manifests, current/previous pod logs, and NGINX controller logs to
+# kind-artifacts/. Collection continues after command failures so a partially
+# installed cluster still yields useful diagnostics. CI uploads this directory.
+#
+# Avoid Secret resources, Helm values, and infrastructure manifests containing
+# generated credentials; redact the known fixture credentials from most output.
+# NGINX logs are collected verbatim. This is intended for the disposable CI
+# fixtures, not for exporting diagnostics from a production cluster.
 set -u
 mkdir -p kind-artifacts
 redact() {

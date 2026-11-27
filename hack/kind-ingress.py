@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
-"""Bootstrap issuer DNS or check application ingress after ct install."""
+"""Configure Kind issuer DNS and verify HTTP routing through NGINX ingress.
+
+Run from the repository root after ct installs the corresponding chart:
+    python3 hack/kind-ingress.py sso          # before installing the application
+    python3 hack/kind-ingress.py application  # after installing the application
+
+Requires kubectl, curl, the kind-chart-testing context, and the NGINX controller
+installed as release nginx in namespace nginx-ingress with host port 80 exposed.
+
+The sso action maps sso.kind.test to NGINX's Service cluster IP in CoreDNS and
+restarts CoreDNS when adding the mapping. This lets application pods reach the
+same issuer hostname that Keycloak advertises. It then requires HTTP 200 from
+the realm's OIDC discovery endpoint through ingress.
+
+The application action requires HTTP 401 or 403 from an unauthenticated importer
+API request through ingress. Both HTTP probes use curl's --resolve against
+127.0.0.1, avoiding runner DNS changes. These supplement the Helm smoke tests,
+which access application Services directly. Unexpected statuses fail the script.
+"""
 
 import argparse
 import json
