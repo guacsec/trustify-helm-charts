@@ -151,20 +151,17 @@ jobs:
       - name: Configure and check Keycloak issuer ingress
         run: python3 hack/kind-ingress.py sso
       # The existing migration pre-install hook mounts the application PVC.
-      # Bootstrap it from the chart itself, then let Helm adopt the same resource.
+      # Bootstrap it from the chart itself; --take-ownership below lets ct's
+      # randomly suffixed Helm release adopt the same generated test resource.
       - name: Prepare storage required by pre-install migration hooks
         run: |
           helm template trustify charts/trustify --namespace trustify-ci \
             --values charts/trustify/ci/kind-values.yaml \
             --show-only templates/services/server/010-PersistentVolumeClaim-storage.yaml \
             | kubectl --context kind-chart-testing -n trustify-ci apply -f -
-          kubectl --context kind-chart-testing -n trustify-ci label pvc storage \
-            app.kubernetes.io/managed-by=Helm --overwrite
-          kubectl --context kind-chart-testing -n trustify-ci annotate pvc storage \
-            meta.helm.sh/release-name=trustify meta.helm.sh/release-namespace=trustify-ci --overwrite
       - name: Install application and run Helm smoke tests with chart-testing
         run: |
-          extra="--set-string image.fullName=$TEST_IMAGE"
+          extra="--take-ownership --set-string image.fullName=$TEST_IMAGE"
           # Omitting the setting in legacy cases exercises the chart default.
           if [[ "$INIT_MODE" == trustd ]]; then
             extra+=" --set initialization.mode=trustd"

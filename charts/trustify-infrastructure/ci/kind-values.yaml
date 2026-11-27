@@ -19,6 +19,8 @@ keycloak:
     limits:
       memory: 1Gi
   postgresql:
+    # ct randomizes release names; keep the application's database address stable.
+    fullnameOverride: infrastructure-postgresql
     primary:
       persistence:
         size: 1Gi

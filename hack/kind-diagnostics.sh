@@ -13,14 +13,16 @@ kubectl --context kind-chart-testing -n trustify-ci get events --sort-by=.lastTi
   2>&1 | redact > kind-artifacts/events.txt
 kubectl --context kind-chart-testing -n trustify-ci describe pods \
   2>&1 | redact > kind-artifacts/pods.txt
-for release in infrastructure trustify; do
+for release in $(helm list -n trustify-ci -q); do
   helm status "$release" -n trustify-ci \
     2>&1 | redact > "kind-artifacts/$release-status.txt"
 done
 # The application chart has no Secret resources; do not export the infrastructure
 # chart's rendered manifests, which contain generated PostgreSQL credentials.
-helm get manifest trustify -n trustify-ci \
-  2>&1 | redact > kind-artifacts/application.yaml
+for release in $(helm list -n trustify-ci --filter '^trustify-' -q); do
+  helm get manifest "$release" -n trustify-ci \
+    2>&1 | redact > kind-artifacts/application.yaml
+done
 for pod in $(kubectl --context kind-chart-testing -n trustify-ci get pods -o name 2>/dev/null); do
   name=${pod#pod/}
   kubectl --context kind-chart-testing -n trustify-ci logs "$pod" --all-containers --prefix --tail=2000 \

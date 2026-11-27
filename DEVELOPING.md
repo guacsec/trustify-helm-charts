@@ -78,23 +78,22 @@ helm template trustify charts/trustify --namespace trustify-ci \
   --values charts/trustify/ci/kind-values.yaml \
   --show-only templates/services/server/010-PersistentVolumeClaim-storage.yaml \
   | kubectl --context kind-chart-testing -n trustify-ci apply -f -
-kubectl --context kind-chart-testing -n trustify-ci label pvc storage \
-  app.kubernetes.io/managed-by=Helm --overwrite
-kubectl --context kind-chart-testing -n trustify-ci annotate pvc storage \
-  meta.helm.sh/release-name=trustify meta.helm.sh/release-namespace=trustify-ci --overwrite
 
 ct install --config .github/ct-install.yaml --charts charts/trustify \
   --namespace trustify-ci --release-name trustify \
-  --helm-extra-set-args '--set-string image.fullName=ghcr.io/guacsec/trustd:0.7.z'
+  --helm-extra-set-args '--take-ownership --set-string image.fullName=ghcr.io/guacsec/trustd:0.7.z'
 python3 hack/kind-ingress.py application
 ```
 
 For native initialization, use a suitable `latest` image and append
 `--set initialization.mode=trustd` inside `--helm-extra-set-args`.
 Each chart's `ci/kind-values.yaml` supplies the CI fixtures automatically.
-The PVC bootstrap uses the actual chart template and Helm ownership metadata;
-Helm adopts it during installation. This is required by the existing filesystem
-migration pre-install hook and is not a change to production PVC lifecycle.
+The PVC bootstrap uses the actual chart template. `ct` adds random suffixes to
+release names, so `--take-ownership` allows its application release to adopt this
+generated test claim. This is required by the existing filesystem migration
+pre-install hook and is not a change to production PVC lifecycle. The PostgreSQL
+CI fixture uses a fixed fullname so the application can find it independently
+of `ct`'s infrastructure release name.
 
 Installation arguments are kept separate from `helm-extra-args`, since `ct`
 also passes the latter to `helm test`. Upgrade tests are intentionally not enabled.
