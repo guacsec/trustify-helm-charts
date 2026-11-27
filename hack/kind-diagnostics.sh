@@ -7,7 +7,7 @@ redact() {
       -e 's/kind-app-password/[REDACTED]/g' \
       -e 's/kind-admin-password/[REDACTED]/g'
 }
-kubectl --context kind-chart-testing -n trustify-ci get pods,deployments,statefulsets,jobs,pvc,ingresses -o yaml \
+kubectl --context kind-chart-testing -n trustify-ci get pods,deployments,statefulsets,services,jobs,pvc,ingresses -o yaml \
   2>&1 | redact > kind-artifacts/resources.yaml
 kubectl --context kind-chart-testing -n trustify-ci get events --sort-by=.lastTimestamp \
   2>&1 | redact > kind-artifacts/events.txt

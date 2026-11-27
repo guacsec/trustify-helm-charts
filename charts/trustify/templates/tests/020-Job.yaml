@@ -25,7 +25,7 @@ spec:
           command: [python3, /tests/smoke-test.py]
           env:
             - name: API_URL
-              value: http://server:8080
+              value: {{ printf "%s://server:%s" (include "trustification.tls.http.protocol" (dict "root" .)) (include "trustification.tls.http.port" (dict "root" .)) | quote }}
             - name: ISSUER_URL
               value: {{ include "trustification.oidc.issuerUrlForClient" (dict "root" . "clientId" "cli") | quote }}
             - name: CLIENT_ID

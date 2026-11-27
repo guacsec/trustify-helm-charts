@@ -26,6 +26,11 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
+            name: API_URL
+            value: http://server:80
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: CLIENT_SECRET
             value: 5460cc91-4e20-4edd-881c-b15b169f8a79
   - it: packages the functional checks and SBOM fixture
