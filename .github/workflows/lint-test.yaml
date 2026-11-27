@@ -5,6 +5,10 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   uncomitted:
@@ -72,5 +76,109 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Helm template unit tests
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.1.1
+          helm unittest charts/trustify
+
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml --all
+
+  integration-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.images.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Test matrix selection
+        run: python3 -m unittest discover -s hack/tests
+      - name: Resolve latest and the two stable minor image lines
+        id: images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 hack/kind-matrix.py
+
+  kind-test:
+    needs: integration-matrix
+    name: Kind (${{ matrix.tag }}, ${{ matrix.mode }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.integration-matrix.outputs.matrix) }}
+    env:
+      TEST_IMAGE: ${{ matrix.image }}
+      INIT_MODE: ${{ matrix.mode }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: '3.x'
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.22.1
+      - uses: helm/chart-testing-action@v2.6.1
+        with:
+          version: '3.14.0'
+      - name: Check native initialization commands
+        if: matrix.mode == 'trustd'
+        run: |
+          for command in provision importers; do
+            if ! docker run --rm --entrypoint /usr/local/bin/trustd "$TEST_IMAGE" db "$command" --help; then
+              echo "::error::The published latest image must contain trustd db $command (backend PR #2923). Native initialization is not skipped or replaced with psql."
+              exit 1
+            fi
+          done
+      - uses: helm/kind-action@v1.12.0
+        with:
+          version: v0.30.0
+          node_image: kindest/node:v1.34.0
+          kubectl_version: v1.34.0
+          cluster_name: chart-testing
+          config: kind/config.yaml
+          wait: 120s
+      - name: Install NGINX ingress
+        run: |
+          helm install nginx oci://ghcr.io/nginx/charts/nginx-ingress --version 2.9.1 \
+            --namespace nginx-ingress --create-namespace --values kind/nginx-values.yaml \
+            --skip-crds --wait --timeout 180s
+          kubectl --context kind-chart-testing create namespace trustify-ci
+      - name: Install and test infrastructure with chart-testing
+        run: >-
+          ct install --config .github/ct-install.yaml
+          --charts charts/trustify-infrastructure
+          --namespace trustify-ci --release-name infrastructure
+      - name: Configure and check Keycloak issuer ingress
+        run: python3 hack/kind-ingress.py sso
+      # The existing migration pre-install hook mounts the application PVC.
+      # Bootstrap it from the chart itself; --take-ownership below lets ct's
+      # randomly suffixed Helm release adopt the same generated test resource.
+      - name: Prepare storage required by pre-install migration hooks
+        run: |
+          helm template trustify charts/trustify --namespace trustify-ci \
+            --values charts/trustify/ci/kind-values.yaml \
+            --show-only templates/services/server/010-PersistentVolumeClaim-storage.yaml \
+            | kubectl --context kind-chart-testing -n trustify-ci apply -f -
+      - name: Install application and run Helm smoke tests with chart-testing
+        run: |
+          extra="--take-ownership --set-string image.fullName=$TEST_IMAGE"
+          # Omitting the setting in legacy cases exercises the chart default.
+          if [[ "$INIT_MODE" == trustd ]]; then
+            extra+=" --set initialization.mode=trustd"
+          fi
+          ct install --config .github/ct-install.yaml --charts charts/trustify \
+            --namespace trustify-ci --release-name trustify --helm-extra-set-args "$extra"
+      - name: Check application ingress
+        run: |
+          kubectl --context kind-chart-testing -n trustify-ci wait pvc/storage \
+            --for=jsonpath='{.status.phase}'=Bound --timeout=60s
+          python3 hack/kind-ingress.py application
+      - name: Collect diagnostics
+        if: always()
+        run: bash hack/kind-diagnostics.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kind-${{ matrix.tag }}-${{ matrix.mode }}
+          path: kind-artifacts/
+          if-no-files-found: ignore

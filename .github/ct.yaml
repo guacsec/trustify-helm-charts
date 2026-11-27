@@ -7,5 +7,5 @@ chart-repos:
   - jaeger=https://jaegertracing.github.io/helm-charts
   - prometheus-community=https://prometheus-community.github.io/helm-charts
   - open-telemetry=https://open-telemetry.github.io/opentelemetry-helm-charts
-helm-extra-args: --timeout 600s --values values-minikube.yaml -set-string appDomain=.localhost
+helm-extra-args: --timeout 600s
 helm-lint-extra-args: --values values-minikube.yaml --set-string appDomain=.localhost

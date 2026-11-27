@@ -1,4 +1,4 @@
-{{- if .Values.modules.createDatabase.enabled }}
+{{- if and .Values.modules.createDatabase.enabled (eq (include "trustification.initialization.mode" .) "psql") }}
 {{- $mod := dict "root" . "name" "create-db" "component" "database" "module" .Values.modules.createDatabase -}}
 kind: ConfigMap
 apiVersion: v1

@@ -1,0 +1,49 @@
+{{- if (.Values.tests).enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-smoke-test
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: smoke-test
+          image: docker.io/library/python:3.13-alpine
+          command: [python3, /tests/smoke-test.py]
+          env:
+            - name: API_URL
+              value: {{ printf "%s://server:%s" (include "trustification.tls.http.protocol" (dict "root" .)) (include "trustification.tls.http.port" (dict "root" .)) | quote }}
+            - name: ISSUER_URL
+              value: {{ include "trustification.oidc.issuerUrlForClient" (dict "root" . "clientId" "cli") | quote }}
+            - name: CLIENT_ID
+              value: {{ include "trustification.oidc.clientId" (dict "root" . "clientId" "cli") | quote }}
+            - name: CLIENT_SECRET
+              {{- include "trustification.oidc.clientSecretValue" (dict "root" . "clientId" "cli") | nindent 14 }}
+          volumeMounts:
+            - name: tests
+              mountPath: /tests
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: tests
+          configMap:
+            name: {{ .Release.Name }}-smoke-test
+{{- end }}

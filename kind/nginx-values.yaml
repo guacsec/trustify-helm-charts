@@ -1,0 +1,15 @@
+# NGINX Open Source controller; host ports are mapped by kind/config.yaml.
+controller:
+  kind: daemonset
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+  enableCustomResources: false
+  service:
+    type: ClusterIP
+    externalTrafficPolicy: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi

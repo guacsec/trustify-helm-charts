@@ -4,6 +4,79 @@
 
 **NOTE:** All commands are relative to this file.
 
+## Kind integration tests with chart-testing
+
+CI uses `helm/chart-testing-action`, `helm/kind-action`, and `ct install` to test
+fresh installations of both charts. Each case has its own cluster with PostgreSQL,
+Keycloak and realm setup, ingress, filesystem PVCs, server, importer, and all
+initialization/migration jobs. The pinned NGINX Ingress Controller chart uses
+Kind's existing port mappings; no cloud provider or LoadBalancer is needed. Disabled importer fixtures prevent external feed
+traffic; optional observability services remain disabled.
+
+The matrix uses `ghcr.io/guacsec/trustd:latest` plus the `.z` aliases for the two
+highest stable minor release lines (currently `0.7.z` and `0.6.z`). All three run
+with the default `psql` mode; `latest` additionally runs with `trustd`. Tags are
+resolved once per workflow and the actual digests are recorded in its summary.
+The native case fails explicitly until `latest` contains both new commands;
+there is no fallback or silently skipped native coverage.
+
+The application chart's optional Helm test hooks (`tests.enabled=true`) check
+unauthenticated rejection, Keycloak client credentials, the seeded importer,
+and SBOM upload/lookup/download. They use the application Service; separate
+workflow checks exercise Keycloak and application ingress routing.
+
+### Run locally
+
+Requirements: Docker, Kind 0.30.0, kubectl 1.34.0, Helm 3.22.1, chart-testing
+3.14.0, and Python 3. The commands below use Linux Docker networking, matching CI.
+
+```shell
+kind create cluster --name chart-testing --image kindest/node:v1.34.0 --config kind/config.yaml
+
+helm install nginx oci://ghcr.io/nginx/charts/nginx-ingress --version 2.9.1 \
+  --namespace nginx-ingress --create-namespace --values kind/nginx-values.yaml \
+  --skip-crds --wait --timeout 180s
+
+kubectl --context kind-chart-testing create namespace trustify-ci
+ct install --config .github/ct-install.yaml --charts charts/trustify-infrastructure \
+  --namespace trustify-ci --release-name infrastructure
+python3 hack/kind-ingress.py sso
+
+# Existing migration hooks require this PVC before Helm's normal resource phase.
+helm template trustify charts/trustify --namespace trustify-ci \
+  --values charts/trustify/ci/kind-values.yaml \
+  --show-only templates/services/server/010-PersistentVolumeClaim-storage.yaml \
+  | kubectl --context kind-chart-testing -n trustify-ci apply -f -
+
+ct install --config .github/ct-install.yaml --charts charts/trustify \
+  --namespace trustify-ci --release-name trustify \
+  --helm-extra-set-args '--take-ownership --set-string image.fullName=ghcr.io/guacsec/trustd:0.7.z'
+python3 hack/kind-ingress.py application
+```
+
+For native initialization, use a suitable `latest` image and append
+`--set initialization.mode=trustd` inside `--helm-extra-set-args`.
+Each chart's `ci/kind-values.yaml` supplies the CI fixtures automatically.
+The PVC bootstrap uses the actual chart template. `ct` adds random suffixes to
+release names, so `--take-ownership` allows its application release to adopt this
+generated test claim. This is required by the existing filesystem migration
+pre-install hook and is not a change to production PVC lifecycle. The PostgreSQL
+CI fixture uses a fixed fullname so the application can find it independently
+of `ct`'s infrastructure release name.
+
+Installation arguments are kept separate from `helm-extra-args`, since `ct`
+also passes the latter to `helm test`. Upgrade tests are intentionally not enabled.
+
+On failure, run `bash hack/kind-diagnostics.sh`; inspect `kind-artifacts/` for
+resource state, hook/workload logs, events, NGINX ingress logs, and Helm status.
+Generated Secrets and Helm values are excluded and fixture credentials are
+redacted. CI uploads these artifacts before Kind's cleanup action deletes the
+cluster. After a local run, clean up explicitly:
+
+```shell
+kind delete cluster --name chart-testing
+```
+
 ## Updating chart dependencies
 
 ```shell

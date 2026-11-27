@@ -1,0 +1,17 @@
+{{- if (.Values.tests).enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-smoke-test
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+data:
+  smoke-test.py: |
+    {{- .Files.Get "files/smoke-test.py" | nindent 4 }}
+  sbom.json: |
+    {{- .Files.Get "files/sbom.json" | nindent 4 }}
+{{- end }}

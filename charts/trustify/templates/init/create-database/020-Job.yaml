@@ -1,4 +1,5 @@
 {{- if .Values.modules.createDatabase.enabled }}
+{{- $native := eq (include "trustification.initialization.mode" .) "trustd" -}}
 {{- $mod := dict "root" . "name" "create-db" "component" "database" "module" .Values.modules.createDatabase -}}
 kind: Job
 apiVersion: batch/v1
@@ -34,16 +35,32 @@ spec:
       {{- include "trustification.application.pod" $mod | nindent 6 }}
 
       volumes:
+        {{- if not $native }}
         - name: init-data
           configMap:
             name: {{ include "trustification.common.name" $mod }}
+        {{- end }}
         {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
 
       containers:
         - name: job
-          {{- include "trustification.common.defaultImage" $mod | nindent 10 }}
+          {{- include "trustification.initialization.image" $mod | nindent 10 }}
           {{- include "trustification.application.container" $mod | nindent 10 }}
 
+          {{- if $native }}
+          env:
+            # connect using the `createDatabase` settings
+            {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( required "Using createDatabase requires setting .Values.createDatabase" (deepCopy .Values.createDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
+
+            # create a user with the `database` settings
+            - name: TRUSTD_DB_PROVISION_NAME
+              {{- include "trustification.common.envVarValue" .Values.database.name | nindent 14 }}
+            - name: TRUSTD_DB_PROVISION_USER
+              {{- include "trustification.common.envVarValue" .Values.database.username | nindent 14 }}
+            - name: TRUSTD_DB_PROVISION_PASSWORD
+              {{- include "trustification.common.envVarValue" .Values.database.password | nindent 14 }}
+
+          {{- else }}
           env:
             # connect using the `createDatabase` settings
             {{- include "trustification.psql.envVars" ( dict "root" . "database" ( merge ( required "Using createDatabase requires setting .Values.createDatabase" (deepCopy .Values.createDatabase) ) ( deepCopy .Values.database ) ) ) | nindent 12 }}
@@ -56,11 +73,23 @@ spec:
             - name: DB_PASSWORD
               {{- include "trustification.common.envVarValue" .Values.database.password | nindent 14 }}
 
+          {{- end }}
+
           volumeMounts:
+            {{- if not $native }}
             - mountPath: /etc/init-data
               name: init-data
+              readOnly: true
+            {{- end }}
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
 
+          {{- if $native }}
+          command:
+            - trustd
+            - db
+            - provision
+
+          {{- else }}
           command:
             - psql
             - --echo-all
@@ -74,5 +103,7 @@ spec:
             - db_password=$(DB_PASSWORD)
             - -f
             - /etc/init-data/init.sql
+
+          {{- end }}
 
 {{- end }}

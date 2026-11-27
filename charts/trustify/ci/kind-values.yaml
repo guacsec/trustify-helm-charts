@@ -1,0 +1,66 @@
+appDomain: .kind.test
+ingress:
+  className: nginx
+openshift:
+  useServiceCa: false
+storage:
+  type: filesystem
+  size: 1Gi
+database:
+  host: infrastructure-postgresql
+  port: "5432"
+  name: trustify
+  username: trustify
+  password: kind-app-password  # Test-only application credential.
+createDatabase:
+  name: postgres
+  username: postgres
+  password:
+    valueFrom:
+      secretKeyRef:
+        name: infrastructure-postgresql
+        key: postgres-password
+migrateDatabase:
+  username: postgres
+  password:
+    valueFrom:
+      secretKeyRef:
+        name: infrastructure-postgresql
+        key: postgres-password
+oidc:
+  clients:
+    cli:
+      clientSecret:
+        value: kind-test-secret  # Test-only credential, shared with the infrastructure fixture.
+tests:
+  enabled: true
+modules:
+  createDatabase:
+    enabled: true
+  migrateDatabase:
+    enabled: true
+  server:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+  importer:
+    workingDirectory:
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  createImporters:
+    enabled: true
+    importers:
+      ci-importer:
+        sbom:
+          description: Kind smoke importer
+          period: 1d
+          source: https://example.invalid/sboms/
+          disabled: true

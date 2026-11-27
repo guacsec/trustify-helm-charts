@@ -20,6 +20,14 @@ tls: {}
 
 storage: {}
 
+# Applies to database creation and importer configuration jobs.
+initialization:
+  mode: psql  # psql (legacy PostgreSQL client) or trustd (application image)
+
+# Optional Helm smoke tests; enabled by the Kind CI values only.
+tests:
+  enabled: false
+
 database: {}
 
 openshift:
@@ -82,10 +90,7 @@ modules:
 
   createDatabase:
     enabled: false
-    image:
-      name: postgres
-      registry: docker.io/library
-      version: "17.2"
+    image: {}
 
   migrateDatabase:
     enabled: false
@@ -96,8 +101,5 @@ modules:
 
   createImporters:
     enabled: false
-    image:
-      name: postgres
-      registry: docker.io/library
-      version: "17.2"
+    image: {}
     importers: {}

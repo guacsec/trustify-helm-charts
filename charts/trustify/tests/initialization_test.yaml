@@ -1,0 +1,184 @@
+suite: initialization uses the application binary
+templates:
+  - templates/init/create-database/010-ConfigMap.yaml
+  - templates/init/create-database/020-Job.yaml
+  - templates/init/create-importers/010-ConfigMap.yaml
+  - templates/init/create-importers/020-Job.yaml
+values:
+  - ../../../values-minikube.yaml
+tests:
+  - it: provisions with the application image and separate administrator credentials
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      initialization.mode: trustd
+      image.fullName: registry.example.com/product/trustd:test
+      database.password:
+        valueFrom:
+          secretKeyRef:
+            name: application-db
+            key: password
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/product/trustd:test
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: [trustd, db, provision]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: infrastructure-postgresql
+                key: postgres-password
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_PROVISION_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: application-db
+                key: password
+  - it: loads importer JSON with the application image
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      initialization.mode: trustd
+      modules.createImporters.enabled: true
+      modules.createImporters.database.host: infrastructure-postgresql
+      modules.createImporters.database.name: trustify
+      modules.createImporters.database.username: importer-admin
+      modules.createImporters.database.password: test-password
+      image.fullName: registry.example.com/product/trustd:test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/product/trustd:test
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: [trustd, db, importers, --file, /etc/init-data/importers.json]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TRUSTD_DB_USER
+            value: importer-admin
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /etc/init-data
+            name: init-data
+            readOnly: true
+  - it: preserves apostrophes in importer configuration as JSON
+    template: templates/init/create-importers/010-ConfigMap.yaml
+    set:
+      initialization.mode: trustd
+      modules.createImporters.enabled: true
+      modules.createImporters.importers:
+        vendor:
+          description: "vendor's feed"
+    asserts:
+      - matchRegex:
+          path: data["importers.json"]
+          pattern: '"description": "vendor''s feed"'
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "35"
+  - it: defaults database creation to psql independently of the application image
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      image.fullName: registry.example.com/product/trustd:test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: psql
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/library/postgres:17.2
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGUSER
+            value: postgres
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: infrastructure-postgresql
+                key: postgres-password
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /etc/init-data
+            name: init-data
+            readOnly: true
+  - it: preserves the legacy SQL setup ConfigMap
+    template: templates/init/create-database/010-ConfigMap.yaml
+    asserts:
+      - matchRegex:
+          path: data["init.sql"]
+          pattern: CREATE DATABASE
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+  - it: omits the SQL ConfigMap in native mode
+    template: templates/init/create-database/010-ConfigMap.yaml
+    set:
+      initialization.mode: trustd
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: defaults importer initialization to the PostgreSQL image
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      image.fullName: registry.example.com/product/trustd:test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: psql
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/library/postgres:17.2
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,pre-upgrade
+  - it: omits the importer JSON ConfigMap in legacy mode
+    template: templates/init/create-importers/010-ConfigMap.yaml
+    set:
+      modules.createImporters.enabled: true
+      initialization.mode: psql
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: honors explicit legacy job images
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      initialization.mode: psql
+      modules.createDatabase.image.fullName: registry.example.com/postgresql:custom
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/postgresql:custom
+  - it: honors explicit native job images over the global full reference
+    template: templates/init/create-database/020-Job.yaml
+    set:
+      initialization.mode: trustd
+      image.fullName: registry.example.com/product/trustd:test
+      modules.createDatabase.image.fullName: registry.example.com/product/init:custom
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/product/init:custom
+  - it: honors split legacy job image overrides
+    template: templates/init/create-importers/020-Job.yaml
+    set:
+      modules.createImporters.enabled: true
+      modules.createImporters.image.registry: registry.example.com
+      modules.createImporters.image.name: custom-postgres
+      modules.createImporters.image.version: test
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/custom-postgres:test

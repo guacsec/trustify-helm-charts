@@ -28,6 +28,7 @@ var cases = []struct {
 	name  string
 	files []string
 }{
+	{"kind", []string{"charts/trustify/ci/kind-values.yaml"}},
 	{"minikube", []string{"values-minikube.yaml"}},
 	{"ocp-no-aws", []string{"values-ocp-no-aws.yaml"}},
 	{"ocp-aws", []string{"values-ocp-aws.yaml"}},
