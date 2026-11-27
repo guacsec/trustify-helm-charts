@@ -4,37 +4,6 @@
 
 **NOTE:** All commands are relative to this file.
 
-## Database initialization jobs
-
-Both initialization jobs default to the existing PostgreSQL client implementation:
-
-```yaml
-initialization:
-  mode: psql
-```
-
-To use the application binary instead, set `initialization.mode=trustd`. This
-single setting changes both `createDatabase` and `createImporters`; it does not
-change the migration job. The selected application image must provide
-`trustd db provision` and `trustd db importers` (backend PR #2923).
-
-With no per-job image overrides, `psql` selects `docker.io/library/postgres:17.2`
-and `trustd` inherits the top-level application `image` settings. Explicit
-`modules.createDatabase.image` and `modules.createImporters.image` overrides
-remain supported. Clear or replace PostgreSQL image overrides when opting into
-`trustd`. This also applies to old image defaults retained by `--reuse-values`;
-prefer normal upgrades using the new chart defaults plus your values files.
-
-Administrator connections still use the merged `createDatabase` and `database`
-settings. The application role uses the separate `database` credentials, including
-Secret references. Both implementations preserve existing data, update the
-application password, and grant schema/table access. Run migrations as the same
-administrator so its default privileges apply to future tables.
-
-Importer initialization retains its database overrides and hook ordering.
-`psql` executes the original SQL; `trustd` reads a JSON ConfigMap and upserts
-configurations atomically using query parameters.
-
 ## Kind integration tests with chart-testing
 
 CI uses `helm/chart-testing-action`, `helm/kind-action`, and `ct install` to test
