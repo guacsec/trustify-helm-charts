@@ -4,7 +4,7 @@ keycloak:
   production: false
   auth:
     adminUser: admin
-    adminPassword: kind-admin-password # Test-only Keycloak credential.
+    adminPassword: kind-admin-password  # Test-only Keycloak credential.
   tls:
     enabled: false
   ingress:
@@ -33,4 +33,4 @@ oidc:
     frontend: {}
     cli:
       clientSecret:
-        value: kind-test-secret # Test-only credential, shared with the application fixture.
+        value: kind-test-secret  # Test-only credential, shared with the application fixture.

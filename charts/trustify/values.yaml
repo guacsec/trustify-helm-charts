@@ -22,7 +22,7 @@ storage: {}
 
 # Applies to database creation and importer configuration jobs.
 initialization:
-  mode: psql # psql (legacy PostgreSQL client) or trustd (application image)
+  mode: psql  # psql (legacy PostgreSQL client) or trustd (application image)
 
 # Optional Helm smoke tests; enabled by the Kind CI values only.
 tests:

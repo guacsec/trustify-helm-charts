@@ -11,7 +11,7 @@ database:
   port: "5432"
   name: trustify
   username: trustify
-  password: kind-app-password # Test-only application credential.
+  password: kind-app-password  # Test-only application credential.
 createDatabase:
   name: postgres
   username: postgres
@@ -31,7 +31,7 @@ oidc:
   clients:
     cli:
       clientSecret:
-        value: kind-test-secret # Test-only credential, shared with the infrastructure fixture.
+        value: kind-test-secret  # Test-only credential, shared with the infrastructure fixture.
 tests:
   enabled: true
 modules:
