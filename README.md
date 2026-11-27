@@ -199,6 +199,23 @@ And then, modify any of the previous `helm` commands to use:
 helm […] --devel trustify/<chart> […]
 ```
 
+## Database initialization implementation
+
+Database and importer initialization use `psql` by default, preserving existing
+PostgreSQL client image behavior. To use `trustd` from the application image for
+both jobs, add:
+
+```yaml
+initialization:
+  mode: trustd
+```
+
+This requires an application image providing `trustd db provision` and
+`trustd db importers`. Remove or replace any per-job PostgreSQL image overrides
+when opting in. The default remains `psql`; migrations are unchanged.
+See [DEVELOPING.md](DEVELOPING.md#database-initialization-jobs) for image selection
+and [Kind integration tests](DEVELOPING.md#kind-integration-tests-with-chart-testing).
+
 ## Additional environment variables
 
 Use `modules.server.extraEnv` and `modules.importer.extraEnv` to pass additional

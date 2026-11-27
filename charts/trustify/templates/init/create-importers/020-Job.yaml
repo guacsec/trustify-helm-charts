@@ -1,4 +1,5 @@
 {{- if .Values.modules.createImporters.enabled }}
+{{- $native := eq (include "trustification.initialization.mode" .) "trustd" -}}
 {{- $mod := dict "root" . "name" "create-importers" "component" "database" "module" .Values.modules.createImporters -}}
 kind: Job
 apiVersion: batch/v1
@@ -34,30 +35,63 @@ spec:
       {{- include "trustification.application.pod" $mod | nindent 6 }}
 
       volumes:
+        {{- if $native }}
         - name: init-data
           configMap:
             name: {{ include "trustification.common.name" $mod }}
+        {{- end }}
         {{- include "trustification.application.extraVolumes" $mod | nindent 8 }}
 
       containers:
         - name: job
-          {{- include "trustification.common.defaultImage" $mod | nindent 10 }}
+          {{- include "trustification.initialization.image" $mod | nindent 10 }}
           {{- include "trustification.application.container" $mod | nindent 10 }}
 
+          {{- if $native }}
           env:
             {{- include "trustification.postgres.envVars" ( dict "root" . "database" ( merge ( deepCopy (.Values.modules.createImporters.database | default dict ) ) (deepCopy .Values.database) ) ) | nindent 12 }}
 
+          {{- else }}
+          env:
+            {{- include "trustification.psql.envVars" ( dict "root" . "database" ( merge ( deepCopy (.Values.modules.createImporters.database | default dict ) ) (deepCopy .Values.database) ) ) | nindent 12 }}
+
+          {{- end }}
+
           volumeMounts:
+            {{- if $native }}
             - mountPath: /etc/init-data
               name: init-data
               readOnly: true
+            {{- end }}
             {{- include "trustification.application.extraVolumeMounts" $mod | nindent 12 }}
 
+          {{- if $native }}
           command:
             - trustd
             - db
             - importers
             - --file
             - /etc/init-data/importers.json
+
+          {{- else }}
+          command:
+            - psql
+            - -v
+            - ON_ERROR_STOP=1
+            - -c
+            - |
+              {{ range $key, $value := .Values.modules.createImporters.importers }}
+              INSERT INTO IMPORTER
+                (name, revision, state, last_change, configuration)
+              VALUES
+                ({{ $key | squote }}, gen_random_uuid(), 0, now(), '{{ $value | toJson }}'::jsonb)
+              ON CONFLICT (name) DO UPDATE
+              SET
+                revision=EXCLUDED.revision,
+                configuration=EXCLUDED.configuration
+              ;
+              {{ end }}
+
+          {{- end }}
 
 {{- end }}

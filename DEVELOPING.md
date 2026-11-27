@@ -6,24 +6,110 @@
 
 ## Database initialization jobs
 
-The `createDatabase` and `createImporters` modules use the application image,
-inheriting the top-level `image` settings. The image must provide
-`trustd db provision` and `trustd db importers`; older images and PostgreSQL-only
-images cannot run these jobs. Remove any existing module image overrides that
-select a PostgreSQL image when upgrading. No PostgreSQL client installation is
-required.
+Both initialization jobs default to the existing PostgreSQL client implementation:
 
-`createDatabase` connects using the merged `createDatabase` and `database`
-settings, then provisions the database and login specified by `database`.
-Passwords remain environment variables with support for Secret references.
-Provisioning preserves existing databases and roles, updates the application
-password, and grants the same access as the former SQL script. Run migrations
-under the same administrator role to apply its default table privileges.
+```yaml
+initialization:
+  mode: psql
+```
 
-`createImporters` mounts a generated JSON ConfigMap and upserts its entries
-atomically after migrations. Its database overrides and hook ordering are
-unchanged. Importer names and configuration values are passed as query
-parameters, including values containing apostrophes.
+To use the application binary instead, set `initialization.mode=trustd`. This
+single setting changes both `createDatabase` and `createImporters`; it does not
+change the migration job. The selected application image must provide
+`trustd db provision` and `trustd db importers` (backend PR #2923).
+
+With no per-job image overrides, `psql` selects `docker.io/library/postgres:17.2`
+and `trustd` inherits the top-level application `image` settings. Explicit
+`modules.createDatabase.image` and `modules.createImporters.image` overrides
+remain supported. Clear or replace PostgreSQL image overrides when opting into
+`trustd`. This also applies to old image defaults retained by `--reuse-values`;
+prefer normal upgrades using the new chart defaults plus your values files.
+
+Administrator connections still use the merged `createDatabase` and `database`
+settings. The application role uses the separate `database` credentials, including
+Secret references. Both implementations preserve existing data, update the
+application password, and grant schema/table access. Run migrations as the same
+administrator so its default privileges apply to future tables.
+
+Importer initialization retains its database overrides and hook ordering.
+`psql` executes the original SQL; `trustd` reads a JSON ConfigMap and upserts
+configurations atomically using query parameters.
+
+## Kind integration tests with chart-testing
+
+CI uses `helm/chart-testing-action`, `helm/kind-action`, and `ct install` to test
+fresh installations of both charts. Each case has its own cluster with PostgreSQL,
+Keycloak and realm setup, ingress, filesystem PVCs, server, importer, and all
+initialization/migration jobs. Disabled importer fixtures prevent external feed
+traffic; optional observability services remain disabled.
+
+The matrix uses `ghcr.io/guacsec/trustd:latest` plus the `.z` aliases for the two
+highest stable minor release lines (currently `0.7.z` and `0.6.z`). All three run
+with the default `psql` mode; `latest` additionally runs with `trustd`. Tags are
+resolved once per workflow and the actual digests are recorded in its summary.
+The native case fails explicitly until `latest` contains both new commands;
+there is no fallback or silently skipped native coverage.
+
+The application chart's optional Helm test hooks (`tests.enabled=true`) check
+unauthenticated rejection, Keycloak client credentials, the seeded importer,
+and SBOM upload/lookup/download. They use the application Service; separate
+workflow checks exercise Keycloak and application ingress routing.
+
+### Run locally
+
+Requirements: Docker, Kind 0.30.0, kubectl 1.34.0, Helm 3.22.1, chart-testing
+3.14.0, and Python 3. The commands below use Linux Docker networking, matching CI.
+
+```shell
+kind create cluster --name chart-testing --image kindest/node:v1.34.0
+
+docker run --detach --name kind-cloud-provider --network host \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.9.0
+
+kubectl --context kind-chart-testing label nodes --all \
+  node.kubernetes.io/exclude-from-external-load-balancers-
+kubectl --context kind-chart-testing create namespace trustify-ci
+ct install --config .github/ct-install.yaml --charts charts/trustify-infrastructure \
+  --namespace trustify-ci --release-name infrastructure
+python3 hack/kind-ingress.py sso
+
+# Existing migration hooks require this PVC before Helm's normal resource phase.
+helm template trustify charts/trustify --namespace trustify-ci \
+  --values charts/trustify/ci/kind-values.yaml \
+  --show-only templates/services/server/010-PersistentVolumeClaim-storage.yaml \
+  | kubectl --context kind-chart-testing -n trustify-ci apply -f -
+kubectl --context kind-chart-testing -n trustify-ci label pvc storage \
+  app.kubernetes.io/managed-by=Helm --overwrite
+kubectl --context kind-chart-testing -n trustify-ci annotate pvc storage \
+  meta.helm.sh/release-name=trustify meta.helm.sh/release-namespace=trustify-ci --overwrite
+
+ct install --config .github/ct-install.yaml --charts charts/trustify \
+  --namespace trustify-ci --release-name trustify \
+  --helm-extra-set-args '--set-string image.fullName=ghcr.io/guacsec/trustd:0.7.z'
+python3 hack/kind-ingress.py application
+```
+
+For native initialization, use a suitable `latest` image and append
+`--set initialization.mode=trustd` inside `--helm-extra-set-args`.
+Each chart's `ci/kind-values.yaml` supplies the CI fixtures automatically.
+The PVC bootstrap uses the actual chart template and Helm ownership metadata;
+Helm adopts it during installation. This is required by the existing filesystem
+migration pre-install hook and is not a change to production PVC lifecycle.
+
+Installation arguments are kept separate from `helm-extra-args`, since `ct`
+also passes the latter to `helm test`. Upgrade tests are intentionally not enabled.
+
+On failure, run `bash hack/kind-diagnostics.sh`; inspect `kind-artifacts/` for
+resource state, hook/workload logs, events, ingress-provider logs, and Helm status.
+Generated Secrets and Helm values are excluded and fixture credentials are
+redacted. CI uploads these artifacts before Kind's cleanup action deletes the
+cluster. After a local run, clean up explicitly:
+
+```shell
+docker rm -f kind-cloud-provider
+kind delete cluster --name chart-testing
+```
 
 ## Updating chart dependencies
 

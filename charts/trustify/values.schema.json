@@ -424,6 +424,32 @@
         }
       }
     },
+    "initialization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "psql",
+            "trustd"
+          ],
+          "default": "psql",
+          "description": "Implementation for database and importer initialization. psql uses a\nPostgreSQL client image; trustd requires an application image with the\ndb provision and db importers commands.\n"
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the Helm functional smoke-test hooks."
+        }
+      }
+    },
     "database": {
       "$ref": "#/definitions/PostgresConfig"
     },

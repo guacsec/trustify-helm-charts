@@ -1,0 +1,41 @@
+suite: optional Helm smoke tests
+templates:
+  - templates/tests/010-ConfigMap.yaml
+  - templates/tests/020-Job.yaml
+values:
+  - ../../../values-minikube.yaml
+tests:
+  - it: does not install test resources by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: installs functional checks as Helm test hooks only when enabled
+    template: templates/tests/020-Job.yaml
+    set:
+      tests.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: test
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: [python3, /tests/smoke-test.py]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLIENT_SECRET
+            value: 5460cc91-4e20-4edd-881c-b15b169f8a79
+  - it: packages the functional checks and SBOM fixture
+    template: templates/tests/010-ConfigMap.yaml
+    set:
+      tests.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["smoke-test.py"]
+          pattern: /api/v3/sbom
+      - matchRegex:
+          path: data["sbom.json"]
+          pattern: CycloneDX

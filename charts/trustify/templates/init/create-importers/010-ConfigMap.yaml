@@ -1,4 +1,4 @@
-{{- if .Values.modules.createImporters.enabled }}
+{{- if and .Values.modules.createImporters.enabled (eq (include "trustification.initialization.mode" .) "trustd") }}
 {{- $mod := dict "root" . "name" "create-importers" "component" "database" "module" .Values.modules.createImporters -}}
 kind: ConfigMap
 apiVersion: v1

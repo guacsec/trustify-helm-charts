@@ -28,6 +28,7 @@ var cases = []struct {
 	name  string
 	files []string
 }{
+	{"kind", []string{"charts/trustify/ci/kind-values.yaml"}},
 	{"minikube", []string{"values-minikube.yaml"}},
 	{"ocp-no-aws", []string{"values-ocp-no-aws.yaml"}},
 	{"ocp-aws", []string{"values-ocp-aws.yaml"}},
@@ -38,6 +39,24 @@ var cases = []struct {
 	// This is the case that actually exercises urn:trustify:importer.
 	{"minikube+importers", []string{"values-minikube.yaml", "values-importers.yaml"}},
 	{"ocp-no-aws+importers", []string{"values-ocp-no-aws.yaml", "values-importers.yaml"}},
+}
+
+func TestInitializationModes(t *testing.T) {
+	registerOrFail(t)
+	for _, mode := range []string{"psql", "trustd", "unsupported"} {
+		t.Run(mode, func(t *testing.T) {
+			values := readValues(t, []string{"charts/trustify/ci/kind-values.yaml"})
+			values["initialization"] = map[string]any{"mode": mode}
+			err := validate(t, values)
+			if mode == "unsupported" {
+				if err == nil {
+					t.Fatal("invalid initialization mode accepted")
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }
 
 func registerOrFail(t *testing.T) {

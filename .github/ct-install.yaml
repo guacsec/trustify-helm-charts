@@ -1,0 +1,9 @@
+# Installation is separate from linting: each chart adds its ci/kind-values.yaml.
+chart-dirs:
+  - charts
+chart-repos:
+  - jaeger=https://jaegertracing.github.io/helm-charts
+  - prometheus-community=https://prometheus-community.github.io/helm-charts
+  - open-telemetry=https://open-telemetry.github.io/opentelemetry-helm-charts
+helm-extra-args: --timeout 900s
+skip-clean-up: true

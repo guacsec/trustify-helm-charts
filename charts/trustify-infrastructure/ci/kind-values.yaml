@@ -1,0 +1,36 @@
+appDomain: .kind.test
+keycloak:
+  enabled: true
+  production: false
+  auth:
+    adminUser: admin
+    adminPassword: kind-admin-password # Test-only Keycloak credential.
+  tls:
+    enabled: false
+  ingress:
+    enabled: true
+    ingressClassName: cloud-provider-kind
+    servicePort: http
+    hostname: sso.kind.test
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  postgresql:
+    primary:
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+oidc:
+  clients:
+    frontend: {}
+    cli:
+      clientSecret:
+        value: kind-test-secret # Test-only credential, shared with the application fixture.
