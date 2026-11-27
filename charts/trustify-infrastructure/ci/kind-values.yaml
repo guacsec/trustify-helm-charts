@@ -9,7 +9,7 @@ keycloak:
     enabled: false
   ingress:
     enabled: true
-    ingressClassName: cloud-provider-kind
+    ingressClassName: nginx
     servicePort: http
     hostname: sso.kind.test
   resources:

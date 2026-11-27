@@ -40,7 +40,8 @@ configurations atomically using query parameters.
 CI uses `helm/chart-testing-action`, `helm/kind-action`, and `ct install` to test
 fresh installations of both charts. Each case has its own cluster with PostgreSQL,
 Keycloak and realm setup, ingress, filesystem PVCs, server, importer, and all
-initialization/migration jobs. Disabled importer fixtures prevent external feed
+initialization/migration jobs. The pinned NGINX Ingress Controller chart uses
+Kind's existing port mappings; no cloud provider or LoadBalancer is needed. Disabled importer fixtures prevent external feed
 traffic; optional observability services remain disabled.
 
 The matrix uses `ghcr.io/guacsec/trustd:latest` plus the `.z` aliases for the two
@@ -61,14 +62,12 @@ Requirements: Docker, Kind 0.30.0, kubectl 1.34.0, Helm 3.22.1, chart-testing
 3.14.0, and Python 3. The commands below use Linux Docker networking, matching CI.
 
 ```shell
-kind create cluster --name chart-testing --image kindest/node:v1.34.0
+kind create cluster --name chart-testing --image kindest/node:v1.34.0 --config kind/config.yaml
 
-docker run --detach --name kind-cloud-provider --network host \
-  --volume /var/run/docker.sock:/var/run/docker.sock \
-  registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.9.0
+helm install nginx oci://ghcr.io/nginx/charts/nginx-ingress --version 2.9.1 \
+  --namespace nginx-ingress --create-namespace --values kind/nginx-values.yaml \
+  --skip-crds --wait --timeout 180s
 
-kubectl --context kind-chart-testing label nodes --all \
-  node.kubernetes.io/exclude-from-external-load-balancers-
 kubectl --context kind-chart-testing create namespace trustify-ci
 ct install --config .github/ct-install.yaml --charts charts/trustify-infrastructure \
   --namespace trustify-ci --release-name infrastructure
@@ -101,13 +100,12 @@ Installation arguments are kept separate from `helm-extra-args`, since `ct`
 also passes the latter to `helm test`. Upgrade tests are intentionally not enabled.
 
 On failure, run `bash hack/kind-diagnostics.sh`; inspect `kind-artifacts/` for
-resource state, hook/workload logs, events, ingress-provider logs, and Helm status.
+resource state, hook/workload logs, events, NGINX ingress logs, and Helm status.
 Generated Secrets and Helm values are excluded and fixture credentials are
 redacted. CI uploads these artifacts before Kind's cleanup action deletes the
 cluster. After a local run, clean up explicitly:
 
 ```shell
-docker rm -f kind-cloud-provider
 kind delete cluster --name chart-testing
 ```
 

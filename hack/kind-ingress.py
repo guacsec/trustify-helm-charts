@@ -4,20 +4,6 @@
 import argparse
 import json
 import subprocess
-import time
-
-
-def ingress_ip(namespace, name):
-    deadline = time.monotonic() + 180
-    while time.monotonic() < deadline:
-        ingress = json.loads(subprocess.check_output([
-            "kubectl", "--context", "kind-chart-testing", "-n", namespace, "get", "ingress", name, "-o", "json",
-        ], text=True))
-        addresses = ingress.get("status", {}).get("loadBalancer", {}).get("ingress", [])
-        if addresses and addresses[0].get("ip"):
-            return addresses[0]["ip"]
-        time.sleep(2)
-    raise RuntimeError(f"ingress {namespace}/{name} did not receive an address")
 
 
 def http_status(host, address, path):
@@ -35,7 +21,11 @@ def main():
     parser.add_argument("--namespace", default="trustify-ci")
     args = parser.parse_args()
     if args.action == "sso":
-        address = ingress_ip(args.namespace, "infrastructure-keycloak")
+        services = json.loads(subprocess.check_output([
+            "kubectl", "--context", "kind-chart-testing", "-n", "nginx-ingress",
+            "get", "services", "-l", "app.kubernetes.io/instance=nginx", "-o", "json",
+        ], text=True))
+        address = services["items"][0]["spec"]["clusterIP"]
         config = json.loads(subprocess.check_output([
             "kubectl", "--context", "kind-chart-testing", "-n", "kube-system", "get", "configmap", "coredns", "-o", "json",
         ], text=True))
@@ -53,12 +43,11 @@ def main():
             ], check=True)
             subprocess.run(["kubectl", "--context", "kind-chart-testing", "-n", "kube-system", "rollout", "restart", "deployment/coredns"], check=True)
             subprocess.run(["kubectl", "--context", "kind-chart-testing", "-n", "kube-system", "rollout", "status", "deployment/coredns", "--timeout=90s"], check=True)
-        status = http_status("sso.kind.test", address, "/realms/trustify/.well-known/openid-configuration")
+        status = http_status("sso.kind.test", "127.0.0.1", "/realms/trustify/.well-known/openid-configuration")
         if status != "200":
             raise RuntimeError(f"OIDC discovery through ingress returned HTTP {status}")
     else:
-        address = ingress_ip(args.namespace, "server")
-        status = http_status("server.kind.test", address, "/api/v3/importer/ci-importer")
+        status = http_status("server.kind.test", "127.0.0.1", "/api/v3/importer/ci-importer")
         if status not in ("401", "403"):
             raise RuntimeError(f"protected application API through ingress returned HTTP {status}")
     print(f"PASS: {args.action} ingress")

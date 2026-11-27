@@ -28,4 +28,6 @@ for pod in $(kubectl --context kind-chart-testing -n trustify-ci get pods -o nam
   kubectl --context kind-chart-testing -n trustify-ci logs "$pod" --all-containers --prefix --previous --tail=500 \
     2>&1 | redact > "kind-artifacts/$name-previous.log"
 done
-docker logs kind-cloud-provider > kind-artifacts/ingress-provider.log 2>&1 || true
+kubectl --context kind-chart-testing -n nginx-ingress logs \
+  -l app.kubernetes.io/instance=nginx --all-containers --tail=2000 \
+  > kind-artifacts/nginx-ingress.log 2>&1 || true

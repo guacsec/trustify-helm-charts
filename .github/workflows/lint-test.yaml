@@ -135,14 +135,13 @@ jobs:
           node_image: kindest/node:v1.34.0
           kubectl_version: v1.34.0
           cluster_name: chart-testing
+          config: kind/config.yaml
           wait: 120s
-      - name: Start Kind ingress provider
+      - name: Install NGINX ingress
         run: |
-          docker run --detach --name kind-cloud-provider --network host \
-            --volume /var/run/docker.sock:/var/run/docker.sock \
-            registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.9.0
-          kubectl --context kind-chart-testing label nodes --all \
-            node.kubernetes.io/exclude-from-external-load-balancers-
+          helm install nginx oci://ghcr.io/nginx/charts/nginx-ingress --version 2.9.1 \
+            --namespace nginx-ingress --create-namespace --values kind/nginx-values.yaml \
+            --skip-crds --wait --timeout 180s
           kubectl --context kind-chart-testing create namespace trustify-ci
       - name: Install and test infrastructure with chart-testing
         run: >-
@@ -186,6 +185,3 @@ jobs:
           name: kind-${{ matrix.tag }}-${{ matrix.mode }}
           path: kind-artifacts/
           if-no-files-found: ignore
-      - name: Stop ingress provider
-        if: always()
-        run: docker rm -f kind-cloud-provider || true

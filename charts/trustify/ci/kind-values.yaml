@@ -1,6 +1,6 @@
 appDomain: .kind.test
 ingress:
-  className: cloud-provider-kind
+  className: nginx
 openshift:
   useServiceCa: false
 storage:
